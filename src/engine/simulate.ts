@@ -16,16 +16,19 @@ export function runFull(
   config: Config,
   policy: Policy,
   seed: number,
-  modifier?: RunModifier,
+  modifier?: RunModifier | RunModifier[],
 ): RunState {
+  const mods = modifier ? (Array.isArray(modifier) ? modifier : [modifier]) : [];
   let state = initState(config, seed);
   const safetyCap = config.turnCeiling + 5;
   while (state.outcome === null && state.turn < safetyCap) {
     const alloc = policy(state);
     state = step(state, alloc, config);
-    if (modifier && state.turn === modifier.atTurn && state.outcome === null) {
-      // Apply the dock after the turn resolves, before the next allocation.
-      state = { ...state, money: state.money + modifier.moneyDelta };
+    // Apply any docks landing on this turn, after it resolves.
+    for (const m of mods) {
+      if (state.turn === m.atTurn && state.outcome === null) {
+        state = { ...state, money: state.money + m.moneyDelta };
+      }
     }
   }
   // If the safety cap hit without a terminal condition, it is stasis.
