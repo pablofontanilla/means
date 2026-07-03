@@ -197,3 +197,61 @@ body {
 
 .fade-in { animation: fadeIn .5s ease both; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---- Act 2: the case (same interface + one new column, §7.4) ---------- */
+/* The capacity meter — the variable the desk never displayed. This diff IS the
+   thesis as UI: the judgment was made on the ledger; the truth lived in the
+   column the form didn't have. */
+.meters { display: flex; gap: 20px; align-items: center; }
+.meter { min-width: 150px; }
+.meter .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; opacity: .85; }
+.meter .track { height: 10px; background: rgba(255,255,255,.22); border-radius: 5px; overflow: hidden; margin-top: 3px; }
+.meter .fill { height: 100%; border-radius: 5px; transition: width .4s ease, background .4s ease; }
+.meter.capacity .fill { background: #7fe3c0; }
+.meter.capacity .fill.low { background: #ffc24b; }
+.meter.capacity .fill.crit { background: #ff6b74; }
+.meter .val { font-family: var(--mono); font-size: 12px; margin-top: 2px; }
+
+.you-strip { display:flex; gap: 18px; align-items:center; }
+.you-strip .cash { text-align:right; }
+.you-strip .cash .amt { font-family: var(--mono); font-size: 18px; font-weight: 700; display: block; }
+.you-strip .cash .lbl { font-size: 10px; text-transform: uppercase; letter-spacing:.08em; opacity:.85; display: block; margin-top: 2px; }
+
+/* discretionary purchase lines carry the same flag-risk look the player wielded */
+.ledger tr.risk td.label::after {
+  content: "▲ flag-risk"; font-size: 9px; color: var(--flag); margin-left: 8px;
+  letter-spacing: .04em; text-transform: uppercase; vertical-align: middle;
+}
+.ledger tr.docked { background: #fdeceb; }
+.ledger tr.docked td.label { color: var(--flag); }
+
+/* allocation controls */
+.allocate { padding: 16px 18px; border-top: 1px solid var(--line); background: var(--field); }
+.allocate h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; }
+.ctl { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.ctl .name { width: 150px; font-size: 13px; }
+.ctl .name small { color: var(--muted); display: block; font-size: 11px; }
+.stepper { display: inline-flex; align-items: center; border: 1.5px solid var(--line); border-radius: 6px; overflow: hidden; }
+.stepper button { border: 0; background: #fff; width: 30px; height: 30px; font-size: 16px; cursor: pointer; color: var(--accent); }
+.stepper button:disabled { color: #cdd4dc; cursor: not-allowed; }
+.stepper .v { width: 34px; text-align: center; font-family: var(--mono); font-weight: 700; }
+.ctl .effect { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+.ctl.tier button { padding: 7px 12px; }
+.projected { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+.clerk-review {
+  background: #2a2f38; color: #e7ebf0; border-radius: 8px; padding: 16px 18px; margin: 14px 0;
+  box-shadow: var(--shadow); animation: fadeIn .4s ease both;
+}
+.clerk-review .tag { font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: #ffb84d; }
+.clerk-review p { margin: 6px 0 0; font-size: 14px; line-height: 1.5; }
+
+/* ---- Endings (§5.5) --------------------------------------------------- */
+.ending { min-height: 78vh; display: grid; place-items: center; text-align: center; }
+.ending .card { background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow); border-radius: 10px; padding: 40px 44px; max-width: 560px; }
+.ending h2 { font-size: 26px; margin: 0 0 6px; }
+.ending .epitaph { font-size: 15px; color: var(--muted); font-style: italic; margin: 14px 0 22px; line-height: 1.6; }
+.ending.escaped h2 { color: var(--approve); }
+.ending.collapsed h2 { color: var(--flag); }
+.ending.trapped h2 { color: var(--gold); }
+.ending .footing-line { height: 60px; margin: 18px 0; }

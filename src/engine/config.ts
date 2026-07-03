@@ -49,6 +49,11 @@ export interface Config {
 
   // escape (§5.4) — structural line: reach the top tier AND hold a buffer
   escapeReserve: number; // money buffer required at max tier to escape
+
+  // Act 2 clerk (§7.5) — flavor only: reviews every N turns and docks a modest
+  // amount per flagged purchase, scaled by the player's own Act 1 flag rate.
+  clerkInterval: number;
+  clerkDockPerFlag: number;
 }
 
 export const DEFAULT_CONFIG: Config = {
@@ -90,6 +95,9 @@ export const DEFAULT_CONFIG: Config = {
   desperationMissShiftChance: 0.5,
 
   escapeReserve: 90,
+
+  clerkInterval: 4,
+  clerkDockPerFlag: 12,
 };
 
 export function cloneConfig(c: Config): Config {
