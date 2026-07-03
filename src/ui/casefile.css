@@ -113,6 +113,14 @@ body {
 .stampbtn.approve.on { background: var(--approve); border-color: var(--approve); color: #fff; }
 .stampbtn.flag.on { background: var(--flag); border-color: var(--flag); color: #fff; }
 
+/* the row jolts when the stamp lands — cheap, tactile impact (§6.5) */
+.ledger tr.stamp-hit { animation: rowHit .45s ease; }
+@keyframes rowHit {
+  0% { background: #fff2cc; box-shadow: inset 3px 0 0 var(--accent); transform: translateX(0); }
+  15% { transform: translateX(2px); }
+  100% { background: inherit; }
+}
+
 /* the slammed stamp mark */
 .stamp-mark {
   display: inline-block; font-weight: 800; font-size: 13px; letter-spacing: .1em;

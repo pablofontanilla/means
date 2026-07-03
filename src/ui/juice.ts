@@ -15,6 +15,13 @@ export function slamStamp(
   mark.className = `stamp-mark ${verdict} slam`;
   mark.textContent = verdict === "flag" ? "Flagged" : "Approved";
   container.appendChild(mark);
+  // Jolt the whole row for impact — the sound and the motion land together.
+  const row = container.closest("tr");
+  if (row) {
+    row.classList.remove("stamp-hit");
+    void row.offsetWidth; // restart the animation if re-stamped
+    row.classList.add("stamp-hit");
+  }
   if (!opts.silent) playStamp({ muffled: opts.muffled });
   return mark;
 }
