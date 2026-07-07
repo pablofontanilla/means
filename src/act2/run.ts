@@ -29,7 +29,7 @@ export function runAct2(
 
 class Act2Run {
   private state: RunState;
-  private alloc: Allocation = { workSlots: 2, restSlots: 1, restorationUnits: 0, attemptTierMove: false };
+  private alloc: Allocation = { regularShifts: 2, overtimeShifts: 0, restSlots: 1, errandSlots: 1, restorationUnits: 0, attemptTierMove: false };
   private purchasesSinceReview = 0;
   private lastClerkNote: string | null = null;
   private lastWeekSummary = "A fresh review period. Allocate your week.";
@@ -127,7 +127,7 @@ class Act2Run {
         <div class="ctl">
           <div class="name">Work shifts<small>earns money, drains capacity</small></div>
           <div class="stepper" data-step="work">
-            <button data-d="-1">–</button><span class="v" id="v-work">${a.workSlots}</span><button data-d="1">+</button>
+            <button data-d="-1">–</button><span class="v" id="v-work">${a.regularShifts}</span><button data-d="1">+</button>
           </div>
           <div class="effect" id="e-work"></div>
         </div>
@@ -136,7 +136,7 @@ class Act2Run {
           <div class="stepper" data-step="rest">
             <button data-d="-1">–</button><span class="v" id="v-rest">${a.restSlots}</span><button data-d="1">+</button>
           </div>
-          <div class="effect">${a.restSlots} of ${c.timeSlotsPerTurn - a.workSlots} free slot(s)</div>
+          <div class="effect">${a.restSlots} of ${c.timeSlotsPerTurn - a.regularShifts} free slot(s)</div>
         </div>
         <div class="ctl">
           <div class="name">Small comforts<small>restores capacity · flag-risk</small></div>
@@ -160,8 +160,8 @@ class Act2Run {
     const c = this.config;
     const clampAlloc = (): void => {
       // Time slots are shared between work and rest.
-      this.alloc.workSlots = Math.max(0, Math.min(c.timeSlotsPerTurn, this.alloc.workSlots));
-      this.alloc.restSlots = Math.max(0, Math.min(c.timeSlotsPerTurn - this.alloc.workSlots, this.alloc.restSlots));
+      this.alloc.regularShifts = Math.max(0, Math.min(c.timeSlotsPerTurn, this.alloc.regularShifts));
+      this.alloc.restSlots = Math.max(0, Math.min(c.timeSlotsPerTurn - this.alloc.regularShifts, this.alloc.restSlots));
       this.alloc.restorationUnits = Math.max(0, Math.min(c.maxRestorationUnits, this.alloc.restorationUnits));
     };
     this.root.querySelectorAll<HTMLElement>(".stepper").forEach((stepper) => {
@@ -170,11 +170,11 @@ class Act2Run {
         btn.addEventListener("click", () => {
           const d = parseInt(btn.dataset.d!, 10);
           if (which === "work") {
-            this.alloc.workSlots += d;
+            this.alloc.regularShifts += d;
             if (d > 0) this.alloc.restSlots = Math.max(0, this.alloc.restSlots - 1);
           } else if (which === "rest") {
             this.alloc.restSlots += d;
-            if (d > 0) this.alloc.workSlots = Math.max(0, this.alloc.workSlots - 1);
+            if (d > 0) this.alloc.regularShifts = Math.max(0, this.alloc.regularShifts - 1);
           } else {
             this.alloc.restorationUnits += d;
           }
@@ -222,7 +222,7 @@ class Act2Run {
     }
 
     // Reset the week's allocation to sensible defaults.
-    this.alloc = { workSlots: 2, restSlots: 1, restorationUnits: 0, attemptTierMove: false };
+    this.alloc = { regularShifts: 2, overtimeShifts: 0, restSlots: 1, errandSlots: 1, restorationUnits: 0, attemptTierMove: false };
 
     if (this.state.outcome !== null) {
       this.showEnding();

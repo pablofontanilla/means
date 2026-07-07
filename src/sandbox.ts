@@ -20,16 +20,26 @@ interface SliderSpec {
 }
 
 const sliders: SliderSpec[] = [
-  spec("shiftYield", 10, 45, 1, "shiftYield"),
-  spec("shiftFatigue", 2, 18, 1, "shiftFatigue"),
+  spec("capacityStart", 40, 100, 1, "capacityStart"),
+  spec("moneyStart", 0, 120, 5, "moneyStart"),
+  spec("turnCeiling", 20, 60, 1, "turnCeiling"),
+  spec("timeSlotsPerTurn", 3, 8, 1, "timeSlotsPerTurn"),
+  spec("shiftYield", 8, 45, 0.5, "shiftYield"),
+  spec("shiftFatigue", 0, 8, 0.1, "shiftFatigue"),
+  spec("overtimeYield", 12, 60, 0.5, "overtimeYield"),
+  spec("overtimeFatigue", 0, 14, 0.1, "overtimeFatigue"),
   spec("restPerSlot", 4, 24, 1, "restPerSlot"),
+  spec("appointmentChance", 0, 1, 0.02, "appointmentChance"),
+  spec("errandPenalty", 0, 20, 1, "errandPenalty"),
   spec("restorationCost", 2, 16, 1, "restorationCost"),
   spec("restorationCapacity", 3, 20, 1, "restorationCapacity"),
   spec("desperationThreshold", 5, 50, 1, "desperationThreshold"),
   spec("eventBaseChance", 0, 1, 0.02, "eventBaseChance"),
   spec("borrowInterest", 0, 0.6, 0.01, "borrowInterest"),
+  spec("desperationMissShiftChance", 0, 1, 0.02, "desperationMissShiftChance"),
   spec("escapeReserve", 20, 200, 5, "escapeReserve"),
   spec("footingAlpha", 0.02, 0.4, 0.01, "footingAlpha"),
+  spec("footingTierScale", 4, 40, 1, "footingTierScale"),
   {
     label: "tier1 moveCost",
     min: 40,

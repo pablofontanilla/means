@@ -5,8 +5,10 @@ export type TierIndex = number; // 0..maxTier
 
 /** What the player (or an authored policy) commits for one turn (§5.2, §10.1). */
 export interface Allocation {
-  workSlots: number; // time slots spent working
+  regularShifts: number; // normal-yield, normal-fatigue work slots
+  overtimeShifts: number; // higher yield + steeper fatigue work slots
   restSlots: number; // time slots spent resting
+  errandSlots: number; // slots spent on required upkeep (appointments/errands)
   restorationUnits: number; // small-pleasure / rest spend that restores capacity
   attemptTierMove: boolean; // spend a lump to attempt a Maslow tier move (§10.3)
 }
@@ -34,6 +36,9 @@ export interface SpendRecord {
   restorationUnits: number;
   tierMoveCost: number;
   interestPaid: number;
+  appointmentRequired: boolean; // did this week carry a required upkeep obligation?
+  appointmentMet: boolean; // was it covered by an errand slot?
+  errandPenalty: number; // capacity docked for an uncovered required appointment
 }
 
 /** One resolved turn — the raw material for ledger rendering (§6.3, §13.1). */

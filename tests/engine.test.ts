@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CONFIG, maxTier } from "../src/engine/config.ts";
+import { cloneConfig, DEFAULT_CONFIG, maxTier } from "../src/engine/config.ts";
 import { initState, step } from "../src/engine/engine.ts";
 import { makeRestorationPolicy, makeRestraintPolicy } from "../src/engine/policies.ts";
+import type { Allocation } from "../src/engine/types.ts";
 import {
   footingShape,
   forkAtDecision,
@@ -30,6 +31,52 @@ describe("determinism (pure, seeded engine)", () => {
     const before = JSON.stringify(s0);
     step(s0, restoration(s0), config);
     expect(JSON.stringify(s0)).toBe(before);
+  });
+});
+
+describe("action variety (P2-M1): overtime shifts and required appointments", () => {
+  const blank = (over: Partial<Allocation>): Allocation => ({
+    regularShifts: 0,
+    overtimeShifts: 0,
+    restSlots: 0,
+    errandSlots: 0,
+    restorationUnits: 0,
+    attemptTierMove: false,
+    ...over,
+  });
+
+  it("an overtime shift earns more but drains more capacity than a regular shift", () => {
+    // Isolate the shift: no events, no appointment, same seed/turn.
+    const quiet = { ...cloneConfig(config), eventBaseChance: 0, appointmentChance: 0 };
+    const s0 = initState(quiet, 5);
+    const reg = step(s0, blank({ regularShifts: 1 }), quiet);
+    const ot = step(s0, blank({ overtimeShifts: 1 }), quiet);
+    expect(ot.history[0].spend.earned).toBeGreaterThan(reg.history[0].spend.earned);
+    expect(ot.capacity).toBeLessThan(reg.capacity);
+  });
+
+  it("an uncovered required appointment docks capacity; an errand slot covers it", () => {
+    const appt = { ...cloneConfig(config), eventBaseChance: 0, appointmentChance: 1 };
+    const s0 = initState(appt, 5);
+    const uncovered = step(s0, blank({ errandSlots: 0 }), appt);
+    const covered = step(s0, blank({ errandSlots: 1 }), appt);
+
+    const u = uncovered.history[0].spend;
+    const c = covered.history[0].spend;
+    expect(u.appointmentRequired).toBe(true);
+    expect(u.appointmentMet).toBe(false);
+    expect(u.errandPenalty).toBe(appt.errandPenalty);
+    expect(c.appointmentMet).toBe(true);
+    expect(c.errandPenalty).toBe(0);
+    expect(covered.capacity).toBeGreaterThan(uncovered.capacity);
+  });
+
+  it("no appointment penalty when the week requires none", () => {
+    const none = { ...cloneConfig(config), eventBaseChance: 0, appointmentChance: 0 };
+    const s0 = initState(none, 5);
+    const r = step(s0, blank({ regularShifts: 1 }), none);
+    expect(r.history[0].spend.appointmentRequired).toBe(false);
+    expect(r.history[0].spend.errandPenalty).toBe(0);
   });
 });
 

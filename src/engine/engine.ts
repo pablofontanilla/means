@@ -62,6 +62,11 @@ export function step(prev: RunState, alloc: Allocation, config: Config): RunStat
   const rng = turnRng(prev.seed, turn);
   const capBefore = prev.capacity;
 
+  // Appointment roll — a fixed-position draw at the top of the turn so forked
+  // branches (§6.3) stay aligned regardless of allocation. Whether this week
+  // requires upkeep is deterministic from the per-turn stream.
+  const appointmentRequired = rng.bool(config.appointmentChance);
+
   let capacity = prev.capacity;
   let money = prev.money;
   let debt = prev.debt;
@@ -74,15 +79,25 @@ export function step(prev: RunState, alloc: Allocation, config: Config): RunStat
     restorationUnits: 0,
     tierMoveCost: 0,
     interestPaid: 0,
+    appointmentRequired,
+    appointmentMet: false,
+    errandPenalty: 0,
   };
 
-  // 1. Work. A forced missed shift (from a prior cascade) kills one work slot.
-  let workSlots = alloc.workSlots;
-  if (prev.missedShiftNext && workSlots > 0) workSlots -= 1;
-  const earned = workSlots * config.shiftYield * yieldFactor(capacity, config);
+  // 1. Work. A forced missed shift (from a prior cascade) kills one shift —
+  // a regular one first, else an overtime one.
+  let regularShifts = alloc.regularShifts;
+  let overtimeShifts = alloc.overtimeShifts;
+  if (prev.missedShiftNext) {
+    if (regularShifts > 0) regularShifts -= 1;
+    else if (overtimeShifts > 0) overtimeShifts -= 1;
+  }
+  const yf = yieldFactor(capacity, config);
+  const earned =
+    regularShifts * config.shiftYield * yf + overtimeShifts * config.overtimeYield * yf;
   spend.earned = earned;
   money += earned;
-  capacity -= workSlots * config.shiftFatigue;
+  capacity -= regularShifts * config.shiftFatigue + overtimeShifts * config.overtimeFatigue;
 
   // 2. Rest + restoration (the "temptation goods" that keep the engine on).
   capacity += alloc.restSlots * config.restPerSlot;
@@ -92,10 +107,20 @@ export function step(prev: RunState, alloc: Allocation, config: Config): RunStat
   money -= spend.restorationCost;
   capacity += units * config.restorationCapacity;
 
-  // 3. Upkeep (rent) + structural drain — the drain is the trap.
+  // 3. Upkeep (rent) + structural drain — the drain is the trap. A required
+  // appointment covered by an errand slot is satisfied; an uncovered one docks
+  // capacity (the cost of a missed benefits review / childcare gap).
   spend.rent = config.tiers[tier].rent;
   money -= spend.rent;
   capacity -= config.tiers[tier].drain;
+  if (appointmentRequired) {
+    if (alloc.errandSlots > 0) {
+      spend.appointmentMet = true;
+    } else {
+      spend.errandPenalty = config.errandPenalty;
+      capacity -= config.errandPenalty;
+    }
+  }
 
   // 4. Tier move (§10.3): deterministic if affordable; RNG gate is the shocks.
   if (alloc.attemptTierMove && tier < maxTier(config)) {

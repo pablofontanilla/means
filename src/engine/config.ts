@@ -20,10 +20,17 @@ export interface Config {
 
   // time / work (§10.1)
   timeSlotsPerTurn: number;
-  shiftYield: number; // money per work slot at full capacity
-  shiftFatigue: number; // capacity drained per work slot
+  shiftYield: number; // money per regular work slot at full capacity
+  shiftFatigue: number; // capacity drained per regular work slot
+  overtimeYield: number; // money per overtime slot at full capacity (> shiftYield)
+  overtimeFatigue: number; // capacity drained per overtime slot (> shiftFatigue)
   restPerSlot: number; // capacity restored per rest slot
   yieldFloor: number; // yield multiplier at zero capacity (linear to 1 at max)
+
+  // appointments / required errands (§10.1) — some weeks carry an upkeep
+  // obligation (benefits review, childcare) that eats a slot without pay.
+  appointmentChance: number; // chance a turn requires an appointment
+  errandPenalty: number; // capacity docked when a required appointment goes uncovered
 
   // restoration / pleasure (§5.1, pillar 2)
   restorationCost: number; // money per restoration unit
@@ -58,43 +65,50 @@ export interface Config {
 
 export const DEFAULT_CONFIG: Config = {
   capacityMax: 100,
-  capacityStart: 62,
+  capacityStart: 82, // a deeper buffer so decline is a slow strangle, not a 3-week death
   footingStart: 45,
-  moneyStart: 55,
-  turnCeiling: 30,
+  moneyStart: 45,
+  turnCeiling: 40, // ~40 weeks: enough rope for the strangle to play out
 
-  timeSlotsPerTurn: 3,
-  shiftYield: 31,
-  shiftFatigue: 8,
-  restPerSlot: 13,
+  timeSlotsPerTurn: 6,
+  shiftYield: 13.5, // tight margins over rent — banking toward escape is slow
+  shiftFatigue: 0.4, // gentle per-slot fatigue so working many slots bleeds slowly
+  overtimeYield: 21.5, // higher yield than a regular shift...
+  overtimeFatigue: 0.9, // ...at a steeper capacity cost
+  restPerSlot: 7,
   yieldFloor: 0.35,
 
+  // Appointments: ~1 turn in 3 carries a required upkeep obligation.
+  appointmentChance: 0.34,
+  errandPenalty: 5, // capacity docked for an uncovered required appointment
+
   restorationCost: 7,
-  restorationCapacity: 10,
+  restorationCapacity: 6,
   maxRestorationUnits: 4,
 
-  desperationThreshold: 28,
+  desperationThreshold: 24,
 
   tiers: [
     // Higher tiers drain less capacity but cost more to hold — climbing barely
-    // outruns its own upkeep, which is the trap (§5.1).
-    { name: "Precarious", rent: 20, drain: 7, moveCost: 0 },
-    { name: "Stable-ish", rent: 31, drain: 4, moveCost: 190 },
-    { name: "Secure", rent: 44, drain: 2, moveCost: 250 },
+    // outruns its own upkeep, which is the trap (§5.1). The drains are gentle so
+    // decline is a slow strangle over many weeks, not a 3-week game-over.
+    { name: "Precarious", rent: 20, drain: 2, moveCost: 0 },
+    { name: "Stable-ish", rent: 31, drain: 1, moveCost: 200 },
+    { name: "Secure", rent: 44, drain: 1, moveCost: 300 },
   ],
 
-  footingAlpha: 0.11,
+  footingAlpha: 0.16, // memory long enough to read the trend, short enough to lift on escape
   footingBase: 22, // input floor: at the base tier, footing drifts down toward this
   footingDeltaScale: 0.8, // Δcapacity is secondary flavor; tier is the real driver
-  // Per-tier input = base + tierScale*tier: tier0=22, tier1=38, tier2=54.
-  // Only the top tier lifts footing above the start (45) — recovery iff escape.
-  footingTierScale: 16,
+  // Per-tier input = base + tierScale*tier: tier0=22, tier1=48, tier2=74.
+  // Only the top tier lifts footing well above the start (45) — recovery iff escape.
+  footingTierScale: 26,
 
-  eventBaseChance: 0.62,
+  eventBaseChance: 0.55,
   borrowInterest: 0.31,
-  desperationMissShiftChance: 0.5,
+  desperationMissShiftChance: 0.3,
 
-  escapeReserve: 90,
+  escapeReserve: 55, // buffer to hold at the top tier to cross the structural line
 
   clerkInterval: 4,
   clerkDockPerFlag: 12,
