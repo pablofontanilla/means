@@ -4,16 +4,18 @@
 
 import { playStamp, playTick } from "./audio.ts";
 
+const STAMP_TEXT = { flag: "Flagged", approve: "Approved", warn: "Warning" } as const;
+
 /** Slam a stamp mark into a cell and fire the sound. Returns the mark element. */
 export function slamStamp(
   container: HTMLElement,
-  verdict: "flag" | "approve",
+  verdict: "flag" | "approve" | "warn",
   opts: { muffled?: boolean; silent?: boolean } = {},
 ): HTMLElement {
   container.innerHTML = "";
   const mark = document.createElement("span");
   mark.className = `stamp-mark ${verdict} slam`;
-  mark.textContent = verdict === "flag" ? "Flagged" : "Approved";
+  mark.textContent = STAMP_TEXT[verdict];
   container.appendChild(mark);
   // Jolt the whole row for impact — the sound and the motion land together.
   const row = container.closest("tr");
@@ -22,7 +24,7 @@ export function slamStamp(
     void row.offsetWidth; // restart the animation if re-stamped
     row.classList.add("stamp-hit");
   }
-  if (!opts.silent) playStamp({ muffled: opts.muffled });
+  if (!opts.silent) playStamp({ muffled: opts.muffled, warn: verdict === "warn" });
   return mark;
 }
 

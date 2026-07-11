@@ -22,6 +22,7 @@ function noiseBuffer(ac: AudioContext, seconds: number): AudioBuffer {
 
 interface StampOptions {
   muffled?: boolean; // Act 2 clerk: distant, behind a wall (§7.2)
+  warn?: boolean; // the warn stamp (§5): a middle register, lighter pad
   gain?: number;
 }
 
@@ -35,19 +36,21 @@ export function playStamp(opts: StampOptions = {}): void {
   }
   const t = ac.currentTime;
   const muffled = opts.muffled ?? false;
+  const warn = opts.warn ?? false;
   const master = ac.createGain();
-  master.gain.value = (opts.gain ?? 1) * (muffled ? 0.32 : 0.9);
+  master.gain.value = (opts.gain ?? 1) * (muffled ? 0.32 : warn ? 0.75 : 0.9);
   master.connect(ac.destination);
 
-  // 1) The pad slap — a short filtered noise burst.
+  // 1) The pad slap — a short filtered noise burst. The warn variant sits a
+  //    register down from the full stamp: same pad, lighter hand (§5).
   const noise = ac.createBufferSource();
   noise.buffer = noiseBuffer(ac, 0.06);
   const nf = ac.createBiquadFilter();
   nf.type = muffled ? "lowpass" : "bandpass";
-  nf.frequency.value = muffled ? 700 : 2600;
+  nf.frequency.value = muffled ? 700 : warn ? 1700 : 2600;
   nf.Q.value = muffled ? 0.7 : 1.1;
   const ng = ac.createGain();
-  ng.gain.setValueAtTime(muffled ? 0.5 : 1, t);
+  ng.gain.setValueAtTime(muffled ? 0.5 : warn ? 0.8 : 1, t);
   ng.gain.exponentialRampToValueAtTime(0.001, t + (muffled ? 0.09 : 0.05));
   noise.connect(nf).connect(ng).connect(master);
   noise.start(t);
@@ -56,7 +59,7 @@ export function playStamp(opts: StampOptions = {}): void {
   // 2) The wooden body — a fast low sine thump.
   const osc = ac.createOscillator();
   osc.type = "sine";
-  const f0 = muffled ? 120 : 190;
+  const f0 = muffled ? 120 : warn ? 155 : 190;
   osc.frequency.setValueAtTime(f0, t);
   osc.frequency.exponentialRampToValueAtTime(f0 * 0.5, t + 0.08);
   const og = ac.createGain();

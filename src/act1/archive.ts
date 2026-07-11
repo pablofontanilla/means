@@ -82,14 +82,16 @@ export class Archive {
   }
 
   private renderEntry(cf: Counterfactual): string {
-    const cls = cf.flagCorrect ? "correct" : "trap";
-    const verb = cf.stamp === "flag" ? "FLAGGED" : "APPROVED";
-    const dock = cf.docked > 0 ? ` Benefit docked $${cf.docked}.` : "";
-    const altTag = cf.stamp === "flag" ? "Branch if approved" : "Branch if flagged";
+    // correct = the vindicated fraud flag; trap = a dock that hurt a real
+    // period; neutral = an approval that changed nothing (no dock applied).
+    const cls = cf.flagCorrect === true ? "correct" : cf.flagCorrect === false ? "trap" : "neutral";
+    const verb = { approve: "APPROVED", warn: "WARNED", flag: "FLAGGED" }[cf.stamp];
+    const dock = cf.docked > 0 ? ` Benefit docked $${cf.docked}.` : " No dock applied.";
+    const altTag = cf.stamp === "approve" ? "Branch if flagged" : "Branch if approved";
     return `
       <div class="cf ${cls}">
-        <div class="head">${cf.caseName} — $${Math.abs(cf.amount)}, ${cf.label}. ${verb}.</div>
-        <div class="sub">Retained: $${Math.abs(cf.amount)}.${dock}</div>
+        <div class="head">${cf.caseName} — ${cf.label}, $${cf.spend} under review. ${verb}.</div>
+        <div class="sub">${dock.trim()}</div>
         <div class="branch played"><span class="tag">Branch as played</span>${cf.asPlayed}</div>
         <div class="branch alt"><span class="tag">${altTag}</span>${cf.alternative}</div>
       </div>`;

@@ -1,25 +1,49 @@
-// The PoC caseload (§ M3, pillar 8). Each case IS an engine run viewed from
-// outside: we run the sim, render the review period as a ledger, and let the
-// desk stamp the discretionary lines. Most flags are rubric-correct yet
-// destroy the recipient (the trap); a few are genuine fraud the sim vindicates
-// (the honest deck) — without which the counterfactuals read as rigged.
+// The PoC caseload (§1, pillar 8). Each case IS an engine run viewed from
+// outside: we run the sim, render the review period as a ledger, aggregate its
+// discretionary spread into category buckets, and add the authored big-ticket
+// purchases. The player judges each item against an allowance the claimant's
+// CIRCUMSTANCES set — dependents raise the bar, so the same spend reads
+// differently across the caseload. Most rubric-correct flags still destroy the
+// recipient (the trap); one big-ticket is genuine fraud the sim vindicates,
+// without which the counterfactuals read as rigged.
 
 import { type Config, DEFAULT_CONFIG } from "../engine/config.ts";
-import { renderLedgerThroughTurn, type LedgerLine } from "../engine/ledger.ts";
+import { renderLedgerThroughTurn } from "../engine/ledger.ts";
 import { makeRestorationPolicy } from "../engine/policies.ts";
 import { runFull } from "../engine/simulate.ts";
 import type { RunState } from "../engine/types.ts";
+import { aggregateCategories, type Category } from "./aggregate.ts";
+import type { Verdict } from "./kpi.ts";
+import {
+  type AllowanceProfile,
+  type Bar,
+  bigTicketBar,
+  categoryBar,
+  deriveAllowance,
+  verdictFor,
+} from "./rubric.ts";
 
-export type LineTruth = "loadbearing" | "fraud";
-export type RubricVerdict = "flag" | "approve";
-export type CaseKind = "trap" | "fraud";
+export type { Category };
 
-export interface CaseLine extends LedgerLine {
-  lineId: string;
-  rubric: RubricVerdict; // what the institution's rubric says to do
-  truth: LineTruth; // the actual nature (drives the counterfactual)
-  dockAmount: number; // benefit docked next period if flagged
-  decisionTurn: number; // engine turn this line belongs to (for the fork)
+export type BigTicketNature = "essential" | "mixed" | "luxury";
+export type ItemTruth = "loadbearing" | "fraud";
+
+/** What the claimant's file says — the context that sets the bar (§1). */
+export interface Circumstances {
+  dependents: number;
+  situation: string; // income / employment, plain language
+  housing: string;
+  note: string; // the caseworker's plain-language annotation
+}
+
+/** An authored big-ticket purchase: its own contextual decision (§1). */
+export interface AuthoredBigTicket {
+  label: string;
+  amount: number; // positive dollars
+  nature: BigTicketNature;
+  decisionTurn: number; // engine turn it belongs to (for the fork)
+  truth: ItemTruth;
+  detail: string; // one line of file context for the row
 }
 
 export interface AuthoredCase {
@@ -28,86 +52,148 @@ export interface AuthoredCase {
   benefit: number;
   seed: number;
   reviewTurns: number;
-  kind: CaseKind;
-  claimNote: string;
+  circumstances: Circumstances;
+  bigTickets: AuthoredBigTicket[];
+}
+
+/** One reviewable item on the desk: a category bucket or a big-ticket purchase. */
+export interface ReviewItem {
+  itemId: string;
+  kind: "category" | "bigticket";
+  label: string;
+  spend: number; // positive dollars under review
+  detail: string; // e.g. "3 charges, weeks 1–6"
+  expected: Verdict; // the institution's contextual verdict (§2)
+  bar: Bar; // the allowance/excess the verdict was read off
+  truth: ItemTruth;
+  decisionTurn: number;
+  dockAmount: number; // docked if flagged; a warn docks half (§6)
 }
 
 export interface BuiltCase extends AuthoredCase {
-  lines: CaseLine[];
+  items: ReviewItem[];
+  allowance: AllowanceProfile;
   run: RunState;
 }
 
-// The institution's rubric (§6.1): "non-essential" spending is flaggable;
-// a short exempt list ("de minimis", one-off family expenses) is not. Applying
-// it is genuine pattern-reading skill (§6.2), not a strawman click-through.
-const NON_ESSENTIAL = new Set([
-  "Rosie's Bar",
-  "Streaming subscription",
-  "Movie ticket",
-  "Lottery ticket",
-  "Takeout dinner",
-]);
-
-export function rubricVerdict(label: string): RubricVerdict {
-  return NON_ESSENTIAL.has(label) ? "flag" : "approve";
-}
-
-const DOCK = 40; // benefit docked per flag (§6.3 example: "docked $40")
-
-// The authored caseload: 5 trap cases, 3 fraud cases (pillar 8). Trap seeds are
-// hand-picked for edge-living runs where a $40 dock reliably flips absorbed
-// shocks into cascades — so the counterfactual archive shows real damage, not
-// "held this period." Fraud seeds are edge-living too: their ordinary pleasure
-// lines are still load-bearing, so only the injected resale line deserves a flag.
+// The authored caseload (§1): 3 cases, circumstances first. Bucket totals are
+// set by reviewTurns (the label spread is deterministic); seeds are hand-picked
+// so the flag-branch forks show real downstream damage, not "held this period".
+// The spread teaches the skill: the same dining pattern is a warn for Alvarez
+// (one dependent), a flag for Okafor (none), unremarkable for Nowak (two).
 export const CASELOAD: AuthoredCase[] = [
-  { id: "c1", name: "R. Alvarez", benefit: 210, seed: 7, reviewTurns: 5, kind: "trap", claimNote: "Single parent, one dependent. Night shifts." },
-  { id: "c2", name: "D. Okafor", benefit: 180, seed: 13, reviewTurns: 6, kind: "trap", claimNote: "Recently reduced hours. No dependents." },
-  { id: "c3", name: "T. Nowak", benefit: 240, seed: 43, reviewTurns: 6, kind: "fraud", claimNote: "Two dependents. Flagged by prior audit." },
-  { id: "c4", name: "S. Bianchi", benefit: 195, seed: 21, reviewTurns: 5, kind: "trap", claimNote: "Caregiver for a parent. Part-time." },
-  { id: "c5", name: "M. Haddad", benefit: 205, seed: 50, reviewTurns: 6, kind: "fraud", claimNote: "Seasonal work. Irregular income." },
-  { id: "c6", name: "J. Fischer", benefit: 175, seed: 26, reviewTurns: 5, kind: "trap", claimNote: "New claim. First review period." },
-  { id: "c7", name: "L. Petrova", benefit: 220, seed: 30, reviewTurns: 6, kind: "trap", claimNote: "Chronic condition. Frequent appointments." },
-  { id: "c8", name: "A. Mensah", benefit: 190, seed: 61, reviewTurns: 5, kind: "fraud", claimNote: "Anonymous tip on file." },
+  {
+    id: "c1",
+    name: "R. Alvarez",
+    benefit: 210,
+    seed: 52,
+    reviewTurns: 6,
+    circumstances: {
+      dependents: 1,
+      situation: "Night-shift stocker; hours cut to 24/week",
+      housing: "One-bedroom rental, shared with child",
+      note: "Single parent, one dependent (age 9). Punctual filer.",
+    },
+    bigTickets: [
+      {
+        label: "Refurbished laptop",
+        amount: 120,
+        nature: "mixed",
+        decisionTurn: 4,
+        truth: "loadbearing",
+        detail: "Week 4 — single purchase. School supply list on file.",
+      },
+    ],
+  },
+  {
+    id: "c2",
+    name: "D. Okafor",
+    benefit: 180,
+    seed: 2,
+    reviewTurns: 6,
+    circumstances: {
+      dependents: 0,
+      situation: "Warehouse picker; hours recently reduced",
+      housing: "Single-occupancy studio",
+      note: "No dependents. Anonymous tip on file re: electronics purchase.",
+    },
+    bigTickets: [
+      {
+        label: '4K television, 65"',
+        amount: 180,
+        nature: "luxury",
+        decisionTurn: 2,
+        truth: "fraud", // resale — the one flag the sim vindicates (pillar 8)
+        detail: "Week 2 — single purchase. No receipt submitted.",
+      },
+    ],
+  },
+  {
+    id: "c3",
+    name: "T. Nowak",
+    benefit: 240,
+    seed: 114,
+    reviewTurns: 7,
+    circumstances: {
+      dependents: 2,
+      situation: "Seasonal warehouse work; between contracts",
+      housing: "Two-bedroom, three occupants",
+      note: "Two dependents (ages 4 and 7). Prior review closed clean.",
+    },
+    bigTickets: [
+      {
+        label: "Refrigerator (replacement)",
+        amount: 140,
+        nature: "essential",
+        decisionTurn: 2,
+        truth: "loadbearing",
+        detail: "Week 2 — single purchase. Prior unit failure documented.",
+      },
+    ],
+  },
 ];
 
-// A fraud line is authored (resale is outside the capacity model). It looks like
-// exactly the kind of "non-essential" purchase the rubric targets — but here the
-// flag is genuinely correct, and the sim vindicates it (§6.3, pillar 8).
-const FRAUD_LINE: Omit<CaseLine, "decisionTurn"> = {
-  turn: 2,
-  label: "Electronics (large)",
-  amount: -220,
-  category: "restoration",
-  flaggable: true,
-  lineId: "fraud",
-  rubric: "flag",
-  truth: "fraud",
-  dockAmount: DOCK,
-};
-
-/** Build a case: run the engine, render the review-period ledger, tag lines. */
+/** Build a case: run the engine, aggregate the review-period discretionary
+ *  spread into buckets, add the authored big tickets, and read each item's
+ *  expected verdict off the claimant's allowance (§1, §2). */
 export function buildCase(authored: AuthoredCase, config: Config = DEFAULT_CONFIG): BuiltCase {
   const run = runFull(config, makeRestorationPolicy(config), authored.seed);
-  const raw = renderLedgerThroughTurn(run, authored.reviewTurns);
+  const allowance = deriveAllowance(authored.circumstances);
 
-  let counter = 0;
-  const lines: CaseLine[] = raw.map((l): CaseLine => ({
-    ...l,
-    lineId: `${authored.id}-${counter++}`,
-    rubric: l.flaggable ? rubricVerdict(l.label) : "approve",
-    truth: "loadbearing",
-    dockAmount: DOCK,
-    decisionTurn: l.turn,
-  }));
+  const buckets = aggregateCategories(renderLedgerThroughTurn(run, authored.reviewTurns));
+  const items: ReviewItem[] = buckets.map((b) => {
+    const bar = categoryBar(b.category, allowance);
+    return {
+      itemId: `${authored.id}-${b.category.toLowerCase()}`,
+      kind: "category",
+      label: b.category,
+      spend: b.spend,
+      detail: `${b.lineCount} charge${b.lineCount > 1 ? "s" : ""}, weeks ${b.firstTurn}–${b.lastTurn}`,
+      expected: verdictFor(b.spend, bar.allowance, bar.excess),
+      bar,
+      truth: "loadbearing",
+      decisionTurn: b.lastTurn,
+      dockAmount: b.spend,
+    };
+  });
 
-  if (authored.kind === "fraud") {
-    // Splice the fraud line into the ledger at its turn, keeping reading order.
-    const fraud: CaseLine = { ...FRAUD_LINE, lineId: `${authored.id}-fraud`, decisionTurn: 2 };
-    const idx = lines.findIndex((l) => l.turn > fraud.turn);
-    lines.splice(idx < 0 ? lines.length : idx, 0, fraud);
+  for (const bt of authored.bigTickets) {
+    const bar = bigTicketBar(bt.nature, authored.circumstances, bt.amount);
+    items.push({
+      itemId: `${authored.id}-${bt.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      kind: "bigticket",
+      label: bt.label,
+      spend: bt.amount,
+      detail: bt.detail,
+      expected: verdictFor(bt.amount, bar.allowance, bar.excess),
+      bar,
+      truth: bt.truth,
+      decisionTurn: bt.decisionTurn,
+      dockAmount: bt.amount,
+    });
   }
 
-  return { ...authored, lines, run };
+  return { ...authored, items, allowance, run };
 }
 
 export function buildCaseload(config: Config = DEFAULT_CONFIG): BuiltCase[] {

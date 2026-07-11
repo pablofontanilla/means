@@ -15,6 +15,7 @@
   --accent-dark: #0b5589;
   --flag: #c8362f; /* stamp red */
   --approve: #1f8a4c; /* stamp green */
+  --warn: #b07308; /* stamp amber — the middle determination */
   --gold: #b8860b;
   --shadow: 0 1px 2px rgba(20, 34, 51, 0.08), 0 6px 18px rgba(20, 34, 51, 0.06);
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -84,6 +85,16 @@ body {
 .casefile .idstrip .benefit .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 .casefile .note { padding: 8px 18px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); font-style: italic; }
 
+/* ---- Circumstances panel (§5) — the context that sets the bar, always on --- */
+.circumstances {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 0 14px; padding: 10px 18px; border-bottom: 1px solid var(--line);
+  background: #f9fbfd;
+}
+.circumstances .c { font-size: 12px; padding: 3px 0; }
+.circumstances .c .k { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); display: block; }
+.circumstances .c.wide { grid-column: 1 / -1; font-style: italic; color: var(--muted); border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 6px; }
+
 .timer-wrap { height: 4px; background: var(--line); }
 .timer-bar { height: 100%; background: var(--accent); transition: width .25s linear; }
 .timer-bar.low { background: var(--flag); }
@@ -111,7 +122,45 @@ body {
 }
 .stampbtn:hover { border-color: var(--muted); }
 .stampbtn.approve.on { background: var(--approve); border-color: var(--approve); color: #fff; }
+.stampbtn.warn.on { background: var(--warn); border-color: var(--warn); color: #fff; }
 .stampbtn.flag.on { background: var(--flag); border-color: var(--flag); color: #fff; }
+
+/* items table: category buckets + big-ticket rows (§5) */
+.ledger tr.group td {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--muted); background: var(--field); padding: 5px 18px; font-weight: 600;
+}
+.ledger td.label small { display: block; color: var(--muted); font-size: 11px; }
+
+/* immediate per-decision feedback (§5): points, standard read, audit delta */
+.decision-feedback { font-family: var(--mono); font-size: 11px; margin-top: 4px; color: var(--muted); animation: fadeIn .3s ease both; }
+.decision-feedback .pts { color: var(--accent-dark); font-weight: 700; }
+.decision-feedback .ok { color: var(--approve); }
+.decision-feedback .off { color: var(--warn); }
+.decision-feedback .bad { color: var(--flag); }
+.decision-feedback .risk { color: var(--flag); font-weight: 700; }
+
+/* ---- Audit event interstitial (§5): the supervisor screen ---------------- */
+.audit-event {
+  position: fixed; inset: 0; z-index: 40; background: rgba(16, 22, 30, .72);
+  display: grid; place-items: center; animation: fadeIn .25s ease both;
+}
+.audit-event .memo {
+  background: var(--paper); border-top: 6px solid var(--flag); border-radius: 8px;
+  box-shadow: 0 18px 60px rgba(0,0,0,.4); max-width: 560px; width: calc(100% - 40px);
+  padding: 26px 30px;
+}
+.audit-event .memo h2 { margin: 0 0 2px; font-size: 18px; color: var(--flag); letter-spacing: .06em; }
+.audit-event .memo .sub { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 12px; }
+.audit-event .memo p { font-size: 14px; line-height: 1.55; }
+.audit-event .rereview {
+  border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; margin: 14px 0;
+  display: flex; align-items: center; gap: 12px; background: #fffdf7;
+}
+.audit-event .rereview .what { flex: 1; font-size: 13px; }
+.audit-event .rereview .what small { display: block; color: var(--muted); font-size: 11px; }
+.audit-event .rereview .amt { font-family: var(--mono); font-weight: 700; }
+.audit-event .actions { background: transparent; border: 0; padding: 6px 0 0; }
 
 /* the row jolts when the stamp lands — cheap, tactile impact (§6.5) */
 .ledger tr.stamp-hit { animation: rowHit .45s ease; }
@@ -129,6 +178,7 @@ body {
 }
 .stamp-mark.flag { color: var(--flag); border-color: var(--flag); }
 .stamp-mark.approve { color: var(--approve); border-color: var(--approve); }
+.stamp-mark.warn { color: var(--warn); border-color: var(--warn); }
 .stamp-mark.slam { animation: slam .28s cubic-bezier(.2,1.4,.5,1); }
 @keyframes slam {
   0% { transform: rotate(-6deg) scale(2.6); opacity: 0; }
@@ -173,6 +223,7 @@ body {
 }
 .cf.correct { border-left: 4px solid var(--approve); }
 .cf.trap { border-left: 4px solid var(--flag); }
+.cf.neutral { border-left: 4px solid var(--line); }
 .cf .head { font-weight: 700; margin-bottom: 4px; }
 .cf .sub { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 8px; }
 .cf .branch { padding: 6px 8px; border-radius: 4px; margin: 4px 0; }
@@ -186,6 +237,8 @@ body {
 .review .banner { background: linear-gradient(135deg, var(--approve), #0f6f3c); color: #fff; padding: 22px; text-align: center; }
 .review .banner h2 { margin: 0 0 4px; font-size: 22px; }
 .review .banner .stars { font-size: 22px; letter-spacing: 4px; }
+.review .perf { padding: 20px 22px; max-width: 480px; margin: 0 auto; }
+.review .blurb { text-align: center; font-style: italic; color: var(--muted); font-size: 13px; margin: 10px 0 14px; }
 .review .cols { display: grid; grid-template-columns: 1fr 1fr; }
 .review .cols > div { padding: 18px; }
 .review .cols > div:first-child { border-right: 1px solid var(--line); }

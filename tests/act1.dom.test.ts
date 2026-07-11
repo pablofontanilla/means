@@ -1,8 +1,12 @@
 // @vitest-environment jsdom
+// Act 1 desk flow (§5, §9): the three-way verdict model, category + big-ticket
+// rows, the audit-event interstitial, and the performance-only review.
+
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { DEFAULT_CONFIG } from "../src/engine/config.ts";
 import { runAct1 } from "../src/act1/desk.ts";
 import type { DeskOutcome } from "../src/act1/desk.ts";
+import { AUDIT_THRESHOLD, alignment } from "../src/act1/kpi.ts";
 
 // jsdom has no rAF/AudioContext; stub what the desk touches so it runs headless.
 beforeAll(() => {
@@ -18,53 +22,119 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-function stampAllAndSubmit(root: HTMLElement): boolean {
-  // Stamp every flaggable line in the current case, then submit.
-  const flagBtns = root.querySelectorAll<HTMLButtonElement>(".stampbtn.flag");
-  if (flagBtns.length === 0) return false;
-  flagBtns.forEach((b) => b.click());
+/** Stamp every item in the current case with one verdict. */
+function stampCase(root: HTMLElement, verdict: "approve" | "warn" | "flag"): number {
+  const btns = root.querySelectorAll<HTMLButtonElement>(`.casefile .stampbtn.${verdict}`);
+  btns.forEach((b) => b.click());
+  return btns.length;
+}
+
+function submitCase(root: HTMLElement): boolean {
   const submit = root.querySelector<HTMLButtonElement>("#submit");
   if (!submit || submit.disabled) return false;
   submit.click();
   return true;
 }
 
-describe("Act 1 desk flow (jsdom smoke test)", () => {
-  it("stamps through the whole caseload and reaches the review", () => {
+describe("Act 1 desk flow (jsdom)", () => {
+  it("renders context + item rows and drives all 3 cases to completion", () => {
     const root = document.createElement("div");
     document.body.appendChild(root);
 
     let outcome: DeskOutcome | null = null;
     runAct1(root, DEFAULT_CONFIG, (o) => (outcome = o));
 
-    // Header + first case rendered.
+    // Header, case file, and the always-visible circumstances panel.
     expect(root.querySelector(".portal-header")).toBeTruthy();
     expect(root.querySelector(".casefile")).toBeTruthy();
+    expect(root.querySelector(".circumstances")).toBeTruthy();
+    expect(root.querySelector(".circumstances")!.textContent).toContain("Dependents");
 
-    // Drive all 8 cases.
-    for (let i = 0; i < 8; i++) {
-      const ok = stampAllAndSubmit(root);
-      expect(ok).toBe(true);
+    // Category buckets and big-ticket rows, each with a 3-way control.
+    expect(root.querySelectorAll("tr.item-category").length).toBeGreaterThan(0);
+    expect(root.querySelectorAll("tr.item-bigticket").length).toBeGreaterThan(0);
+    const firstRow = root.querySelector("tr.item-category")!;
+    expect(firstRow.querySelectorAll(".stampbtn").length).toBe(3);
+
+    // Immediate per-decision feedback lands on the stamped row.
+    firstRow.querySelector<HTMLButtonElement>(".stampbtn.flag")!.click();
+    expect(firstRow.querySelector(".decision-feedback")).toBeTruthy();
+    expect(firstRow.querySelector(".decision-feedback")!.textContent).toContain("pts");
+
+    // Drive all 3 cases, flagging everything.
+    for (let i = 0; i < 3; i++) {
+      stampCase(root, "flag");
+      expect(submitCase(root)).toBe(true);
     }
 
     expect(outcome).not.toBeNull();
-    const o = outcome!;
-    expect(o.kpi.casesResolved).toBe(8);
-    expect(o.kpi.flags).toBeGreaterThan(0);
-    // Every stamped line produced a counterfactual (both branches filed).
+    const o = outcome! as DeskOutcome;
+    expect(o.kpi.casesResolved).toBe(3);
+    expect(o.cases.length).toBe(3);
+    expect(o.kpi.flags).toBe(o.kpi.totalStamps);
+    // Over-flagging tanks alignment — the fix for "just flag everything".
+    expect(alignment(o.kpi)).toBeLessThan(0.5);
+    // Flagging never accrues audit risk.
+    expect(o.kpi.auditRisk).toBe(0);
+    // Every determination produced a counterfactual (both branches filed).
     expect(o.counterfactuals.length).toBe(o.kpi.totalStamps);
-    // Archive received entries.
     expect(root.querySelector(".drawer-tab .badge")!.textContent).toBe(String(o.counterfactuals.length));
   });
 
-  it("renders the act-end review with cohort outcomes", async () => {
+  it("fires the audit event once on crossing and re-reviews a prior decision", () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    let outcome: DeskOutcome | null = null;
+    runAct1(root, DEFAULT_CONFIG, (o) => (outcome = o));
+
+    // Case 1 (R. Alvarez): no expected-flags — approving all is audit-quiet.
+    stampCase(root, "approve");
+    expect(document.querySelector(".audit-event")).toBeNull();
+    expect(submitCase(root)).toBe(true);
+
+    // Case 2 (D. Okafor): approving the expected-flag items accrues audit risk
+    // past the threshold — the supervisor interstitial appears.
+    stampCase(root, "approve");
+    const overlay = document.querySelector<HTMLElement>(".audit-event");
+    expect(overlay).toBeTruthy();
+    // It pulls a PRIOR under-called determination back for a fresh one:
+    // the first expected-flag this shift was Okafor's Dining bucket.
+    expect(overlay!.textContent).toContain("Dining");
+    expect(overlay!.textContent).toContain("D. Okafor");
+    // The queue is gated until the re-determination is made.
+    expect(root.querySelector<HTMLButtonElement>("#submit")!.disabled).toBe(true);
+
+    // Make the fresh determination and return to the caseload.
+    overlay!.querySelector<HTMLButtonElement>(".stampbtn.flag")!.click();
+    const ret = overlay!.querySelector<HTMLButtonElement>("#audit-return")!;
+    expect(ret.disabled).toBe(false);
+    ret.click();
+    expect(document.querySelector(".audit-event")).toBeNull();
+    expect(submitCase(root)).toBe(true);
+
+    // Case 3: more approvals — but the crossing already happened, so the
+    // event does not fire again.
+    stampCase(root, "approve");
+    expect(document.querySelector(".audit-event")).toBeNull();
+    expect(submitCase(root)).toBe(true);
+
+    const o = outcome! as DeskOutcome;
+    expect(o.kpi.auditRisk).toBeGreaterThanOrEqual(AUDIT_THRESHOLD);
+    // The re-determination was a real stamp, filed like any other.
+    expect(o.counterfactuals.length).toBe(o.kpi.totalStamps);
+  });
+
+  it("shows a performance-only review: no cohort, alignment + audit standing", async () => {
     const { showReview } = await import("../src/act1/review.ts");
     // Drive the desk first (its own root is the only one in the body).
     let outcome: DeskOutcome | null = null;
     const deskRoot = document.createElement("div");
     document.body.appendChild(deskRoot);
     runAct1(deskRoot, DEFAULT_CONFIG, (o) => (outcome = o));
-    for (let i = 0; i < 8; i++) stampAllAndSubmit(deskRoot);
+    for (let i = 0; i < 3; i++) {
+      stampCase(deskRoot, "flag");
+      submitCase(deskRoot);
+    }
     deskRoot.remove();
 
     // Now render the review into a fresh root.
@@ -74,21 +144,14 @@ describe("Act 1 desk flow (jsdom smoke test)", () => {
     let continued = false;
     showReview(root, outcome!, DEFAULT_CONFIG, () => (continued = true));
     expect(root.querySelector(".review")).toBeTruthy();
-    expect(root.querySelector(".cohort-bar")).toBeTruthy();
+    // The cohort/poverty-trap tally is GONE from the act-end screen (§8).
+    expect(root.querySelector(".cohort-bar")).toBeNull();
+    expect(root.textContent).not.toMatch(/escaped|collapsed|trapped/i);
+    // Performance signals: stars, alignment %, audit standing.
+    expect(root.querySelector(".stars")).toBeTruthy();
+    expect(root.querySelector("#r-align")!.textContent).toMatch(/^\d+%$/);
+    expect(root.querySelector("#r-audit")!.textContent).toBe("Clear");
     root.querySelector<HTMLButtonElement>("#continue")!.click();
     expect(continued).toBe(true);
-  });
-
-  it("flagging everything makes accuracy match the rubric-flag proportion", () => {
-    const root = document.createElement("div");
-    document.body.appendChild(root);
-    let outcome: DeskOutcome | null = null;
-    runAct1(root, DEFAULT_CONFIG, (o) => (outcome = o));
-    for (let i = 0; i < 8; i++) stampAllAndSubmit(root);
-    // Flagging every line: accurate stamps are exactly the rubric-flag lines.
-    const o = outcome!;
-    expect(o.kpi.flags).toBe(o.kpi.totalStamps);
-    expect(o.kpi.accurateStamps).toBeLessThan(o.kpi.totalStamps); // some lines were exempt
-    expect(o.kpi.accurateStamps).toBeGreaterThan(0);
   });
 });
