@@ -149,6 +149,9 @@ body {
   background: var(--paper); border-top: 6px solid var(--flag); border-radius: 8px;
   box-shadow: 0 18px 60px rgba(0,0,0,.4); max-width: 560px; width: calc(100% - 40px);
   padding: 26px 30px;
+  /* the beat (P2-M4): backdrop dims first, then the memo lands — timed to the
+     muffled stamp thud desk.ts fires at the same offset */
+  animation: fadeIn .3s ease .26s both;
 }
 .audit-event .memo h2 { margin: 0 0 2px; font-size: 18px; color: var(--flag); letter-spacing: .06em; }
 .audit-event .memo .sub { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 12px; }
@@ -327,3 +330,22 @@ body {
 .ending.collapsed h2 { color: var(--flag); }
 .ending.trapped h2 { color: var(--gold); }
 .ending .footing-line { height: 60px; margin: 18px 0; }
+
+/* ---- Title menu (P2-M4): a cover sheet in the same document system ----- */
+.title-menu { min-height: 78vh; display: grid; place-items: center; text-align: center; }
+.title-menu .cover {
+  background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow);
+  border-radius: 8px; padding: 44px 52px; max-width: 460px;
+}
+.title-menu .doc-line { font-size: 10px; text-transform: uppercase; letter-spacing: .18em; color: var(--muted); }
+.title-menu .game-title { font-size: 40px; letter-spacing: .06em; margin: 10px 0 2px; font-weight: 700; }
+.title-menu .tagline { font-size: 14px; color: var(--muted); margin: 0 0 26px; }
+.title-menu .paths { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.title-menu .paths .btn { min-width: 240px; }
+.title-menu .skip-rate {
+  margin-top: 10px; font-size: 11px; color: var(--muted);
+  display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;
+}
+.title-menu .skip-rate span { flex-basis: 100%; } /* label above, the three rates on one line */
+.title-menu .skip-rate label { cursor: pointer; white-space: nowrap; }
+.title-menu .skip-rate input { accent-color: var(--accent); margin-right: 2px; vertical-align: -1px; }

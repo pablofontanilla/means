@@ -9,6 +9,7 @@
 // delighted with you, and never winks.
 
 import type { Config } from "../engine/config.ts";
+import { playStamp } from "../ui/audio.ts";
 import { slamStamp, tickCounter } from "../ui/juice.ts";
 import { Archive } from "./archive.ts";
 import type { BuiltCase, ReviewItem } from "./cases.ts";
@@ -349,6 +350,10 @@ class Desk {
     });
 
     this.root.appendChild(overlay);
+    // The crossing lands as an event, not a popup (§6.5 register): the screen
+    // dims first, a beat, then the memo drops in with a heavy, muffled stamp —
+    // timed to the memo's delayed entrance (see .audit-event .memo in CSS).
+    setTimeout(() => playStamp({ muffled: true, gain: 1.6 }), 260);
   }
 
   // ---- timer ----

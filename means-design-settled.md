@@ -204,6 +204,8 @@ This is the engine's absorption asymmetry (*same event, opposite meaning dependi
 - The act-end screen is a **glowing performance review laid over cohort outcomes:** collapse rates by flag rate, footing-shape graphs (stabilized / freefall / just lifting) for the entire caseload. The two artifacts are presented side by side without comment.
 - **Primary telemetry / v1 test:** does the player's flag rate drop across Act 1 *even though the KPI punishes the drop*? A dropping flag rate is a sincere judgment being overturned by evidence, at personal (score) cost. That is the whole act in one metric.
 
+*(Pass 2 revised the act-end screen: performance-only, no cohort overlay — see the appendix, "Pass 2 revisions".)*
+
 ### 6.5 The juice arc: player-triggered decay, not authorial exaggeration
 
 The feedback layer is tuned to be **genuinely excellent and held completely straight for the entire act.** The reference register is *Balatro* / the *Papers, Please* stamp: sincere, tactile, zero irony in presentation.
@@ -347,3 +349,39 @@ Everything above is settled. These are genuinely unresolved and are the content/
 ---
 
 *§§1–12 reflect the settled design. §13 is where the next conversation lives.*
+
+---
+
+## Appendix: Pass 2 revisions (playtest-driven) — 2026-07-12
+
+Deviations from the settled text above, made during the pass-2 playtest build.
+Where they conflict, this appendix wins.
+
+- **§6.4 — the act-end screen is performance-only.** The glowing review no
+  longer lays cohort outcomes alongside itself; the collapse-rate/footing-shape
+  pedagogy moves entirely into the counterfactual archive. Playtest read: the
+  side-by-side handed the player the conclusion, and it broke §6.4's own first
+  bullet ("Act 1 asks nothing"). Arguably this strengthens the §11.4 horror —
+  you never see what your stamps did unless you go looking.
+- **§5 — the stamp is three-way.** Binary approve/flag became
+  **Approve / Warn / Flag**, and per-line determinations became **category
+  buckets + big-ticket line items**. Fewer, meatier calls; the middle stamp
+  gives leniency a price short of a flag.
+- **Contextual rubric (new).** Each case's circumstances set the discretionary
+  allowance the determinations are judged against — the bar moves with the
+  claimant, so the "right" call requires reading the file, not memorizing a
+  number.
+- **§5 — audit risk is a real mechanic.** Under-calling expected-flags accrues
+  audit risk; crossing the threshold fires a supervisor audit event that pulls
+  one prior determination back for re-review, on the books, with a rating
+  penalty.
+- **§7/§10 — Act 2 gains action variety and a longer, slower horizon.** The
+  weekly allocation is regular shifts / overtime / rest / errands / comforts /
+  tier move under a shared slot budget, and the strangle plays out over ~40
+  weeks. The capacity meter is **centered above the case file** — the focal
+  point, not a header widget (§7.4's one sanctioned break in continuity, made
+  louder).
+- **Title menu (new, build-pragmatic).** A cover-sheet menu in the same portal
+  chrome: "Play from Act 1" (the full flow, act break intact) and a playtest
+  "Skip to Act 2" under an assumed desk record (default flag rate 0.6; lenient
+  0.2 / typical 0.6 / punitive 0.9 chooser). Act 2's ending returns here.
