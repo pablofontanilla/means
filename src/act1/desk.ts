@@ -72,6 +72,14 @@ class Desk {
   private caseStart = 0;
   private caseDuration = 0;
   private auditOpen = false;
+  // Audit crossings are deferred past the current stamping context (§5): a
+  // crossing detected mid-way through timeout()'s auto-approve batch must not
+  // open the interstitial while items remain unstamped — stamp() early-returns
+  // behind it, which would strand live buttons on a case whose clock already
+  // expired. `pendingAudit` holds the crossing record; `batchStamping` marks
+  // that timeout() owns the flush.
+  private pendingAudit: StampRecord | null = null;
+  private batchStamping = false;
 
   constructor(
     root: HTMLElement,
@@ -216,8 +224,22 @@ class Desk {
     this.maybeEnableSubmit();
     this.maybeNudge();
 
-    // The audit event fires exactly once per threshold crossing (§4, §5).
-    if (breakdown.crossedAudit) this.fireAudit(record);
+    // The audit event fires exactly once per threshold crossing (§4, §5) —
+    // recorded here, fired once the current stamping context completes: for an
+    // interactive stamp that is right now (identical behavior to firing
+    // directly); during timeout()'s batch, the flush waits for the loop.
+    if (breakdown.crossedAudit) this.pendingAudit = record;
+    if (!this.batchStamping) this.flushPendingAudit();
+  }
+
+  /** Open the interstitial for a crossing recorded by stamp(). Called at the
+   *  end of every interactive stamp and after timeout()'s auto-approve batch —
+   *  synchronous and deterministic, no scheduling involved. */
+  private flushPendingAudit(): void {
+    if (this.pendingAudit === null) return;
+    const record = this.pendingAudit;
+    this.pendingAudit = null;
+    this.fireAudit(record);
   }
 
   /** Immediate per-decision feedback (§5): points, standard read, audit delta. */
@@ -386,14 +408,20 @@ class Desk {
 
   private timeout(): void {
     // Out of time: unstamped items default to APPROVE — which quietly accrues
-    // audit risk on any expected-flag item. Dawdling has a cost.
+    // audit risk on any expected-flag item. Dawdling has a cost. If the batch
+    // crosses the audit threshold, the interstitial is deferred until every
+    // item has its default stamp, so the case returns from the audit in the
+    // same ready-to-submit state any full timeout produces.
     this.stopTimer();
+    this.batchStamping = true;
     for (const item of this.current.items) {
       if (this.caseStamps.has(item.itemId)) continue;
       const cell = this.findCell(item.itemId);
       const btns = cell ? Array.from(cell.querySelectorAll<HTMLButtonElement>("button")) : [];
       if (cell) this.stamp(item, "approve", cell, btns);
     }
+    this.batchStamping = false;
+    this.flushPendingAudit();
   }
 
   private findCell(itemId: string): HTMLElement | null {

@@ -121,9 +121,6 @@ body {
   text-transform: uppercase; transition: all .1s;
 }
 .stampbtn:hover { border-color: var(--muted); }
-.stampbtn.approve.on { background: var(--approve); border-color: var(--approve); color: #fff; }
-.stampbtn.warn.on { background: var(--warn); border-color: var(--warn); color: #fff; }
-.stampbtn.flag.on { background: var(--flag); border-color: var(--flag); color: #fff; }
 
 /* items table: category buckets + big-ticket rows (§5) */
 .ledger tr.group td {
@@ -312,7 +309,6 @@ body {
 .stepper .v { width: 34px; text-align: center; font-family: var(--mono); font-weight: 700; }
 .ctl .effect { font-size: 12px; color: var(--muted); font-family: var(--mono); }
 .ctl.tier button { padding: 7px 12px; }
-.projected { font-size: 12px; color: var(--muted); margin-left: auto; }
 
 .clerk-review {
   background: #2a2f38; color: #e7ebf0; border-radius: 8px; padding: 16px 18px; margin: 14px 0;

@@ -6,8 +6,6 @@
 // tanks alignment; under-calling expected-flags accrues audit risk. The score
 // climbs either way — the gap between the score and the rating is the point.
 
-import type { Counterfactual } from "./counterfactual.ts";
-
 /** The three-way determination the whole act speaks in (§4). */
 export type Verdict = "approve" | "warn" | "flag";
 
@@ -164,11 +162,4 @@ export function rating(kpi: KpiState): Rating {
         ? "Solid work. A few determinations off-standard."
         : "Determinations frequently diverged from the rubric.";
   return { stars, blurb };
-}
-
-/** Everything Act 2 needs from Act 1 (the clerk reads the flag rate + policy). */
-export interface Act1Result {
-  kpi: KpiState;
-  flagRate: number;
-  counterfactuals: Counterfactual[];
 }

@@ -128,6 +128,52 @@ describe("Act 1 desk flow (jsdom)", () => {
     expect(o.counterfactuals.length).toBe(o.kpi.totalStamps);
   });
 
+  it("defers a mid-timeout audit crossing until the whole batch is auto-stamped", () => {
+    // Capture the desk's rAF tick so the case clock can be driven for real:
+    // jump performance.now past the deadline and run one tick — timeout() fires
+    // through its production path, no internals poked.
+    let tick: FrameRequestCallback | null = null;
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      tick = cb;
+      return 0;
+    });
+    const nowSpy = vi.spyOn(performance, "now").mockReturnValue(0);
+
+    try {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      runAct1(root, DEFAULT_CONFIG, () => {});
+
+      // Case 1 (R. Alvarez): no expected-flags — approve everything, audit-quiet.
+      stampCase(root, "approve");
+      expect(submitCase(root)).toBe(true);
+
+      // Case 2 (D. Okafor): let it fully time out. The auto-approve loop crosses
+      // the audit threshold partway through (two expected-flags at +12 each) —
+      // the interstitial must wait until every item has its default stamp.
+      nowSpy.mockReturnValue(1e9); // long past the case deadline
+      expect(tick).not.toBeNull();
+      tick!(1e9);
+
+      const overlay = document.querySelector<HTMLElement>(".audit-event");
+      expect(overlay).toBeTruthy();
+      // No stranded determinations: every item was auto-stamped before the
+      // audit opened (the regression left live buttons behind the overlay).
+      expect(root.querySelectorAll(".casefile .stampbtn").length).toBe(0);
+      expect(root.querySelector<HTMLButtonElement>("#submit")!.disabled).toBe(true);
+
+      // Complete the re-review and return: the case comes back in the same
+      // ready-to-submit state a full timeout produces.
+      overlay!.querySelector<HTMLButtonElement>(".stampbtn.flag")!.click();
+      overlay!.querySelector<HTMLButtonElement>("#audit-return")!.click();
+      expect(document.querySelector(".audit-event")).toBeNull();
+      expect(submitCase(root)).toBe(true);
+    } finally {
+      nowSpy.mockRestore();
+      vi.stubGlobal("requestAnimationFrame", () => 0);
+    }
+  });
+
   it("shows a performance-only review: no cohort, alignment + audit standing", async () => {
     const { showReview } = await import("../src/act1/review.ts");
     // Drive the desk first (its own root is the only one in the body).
