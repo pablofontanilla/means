@@ -4,3 +4,7 @@ dist/
 .DS_Store
 .vite/
 coverage/
+
+# workspace plugin working artifacts (single-repo self-workspace)
+dev-env.yaml
+projects/
