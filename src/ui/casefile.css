@@ -239,15 +239,8 @@ body {
 .review .banner .stars { font-size: 22px; letter-spacing: 4px; }
 .review .perf { padding: 20px 22px; max-width: 480px; margin: 0 auto; }
 .review .blurb { text-align: center; font-style: italic; color: var(--muted); font-size: 13px; margin: 10px 0 14px; }
-.review .cols { display: grid; grid-template-columns: 1fr 1fr; }
-.review .cols > div { padding: 18px; }
-.review .cols > div:first-child { border-right: 1px solid var(--line); }
-.review h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; }
 .review .stat { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eef1f4; font-size: 14px; }
 .review .stat .v { font-family: var(--mono); font-weight: 700; }
-.cohort-bar { display: flex; height: 22px; border-radius: 4px; overflow: hidden; margin: 6px 0 12px; font-size: 10px; color: #fff; }
-.cohort-bar .esc { background: var(--approve); } .cohort-bar .col { background: var(--flag); } .cohort-bar .tra { background: var(--gold); }
-.cohort-bar span { display: grid; place-items: center; }
 
 /* ---- Act break -------------------------------------------------------- */
 .actbreak { min-height: 82vh; display: grid; place-items: center; text-align: center; }

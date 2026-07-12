@@ -110,6 +110,10 @@ describe("Act 1 desk flow (jsdom)", () => {
     expect(ret.disabled).toBe(false);
     ret.click();
     expect(document.querySelector(".audit-event")).toBeNull();
+    // Clicks that landed while the interstitial was up were swallowed (the
+    // desk is guarded): the items after the crossing still need real stamps.
+    expect(submitCase(root)).toBe(false);
+    stampCase(root, "approve");
     expect(submitCase(root)).toBe(true);
 
     // Case 3: more approvals — but the crossing already happened, so the

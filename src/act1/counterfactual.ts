@@ -23,6 +23,7 @@ export interface Counterfactual {
   docked: number;
   asPlayed: string; // the branch the player's determination produced
   alternative: string; // the branch they didn't take
+  altPole: "approve" | "flag"; // which pole `alternative` describes (§6.3)
   flagCorrect: boolean | null; // fraud → true, docked trap → false, no dock → null
   headline: string; // one-liner for the drawer list
 }
@@ -113,7 +114,9 @@ export function resolveItem(
         headline: `${item.label}: missed fraud — approved.`,
       },
     };
-    return { ...base, ...texts[stamp], flagCorrect: true };
+    // For fraud, only the flag's alternative is the approve pole: the warn was
+    // an under-call, so the branch worth showing is the full flag (§6.3).
+    return { ...base, ...texts[stamp], altPole: stamp === "flag" ? "approve" : "flag", flagCorrect: true };
   }
 
   // Load-bearing: fork the run at this item's turn (same shocks, opposite
@@ -144,6 +147,7 @@ export function resolveItem(
     ...base,
     asPlayed,
     alternative,
+    altPole: stamp === "approve" ? "flag" : "approve",
     flagCorrect: docked > 0 ? false : null,
     headline,
   };

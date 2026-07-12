@@ -103,6 +103,16 @@ export const CASELOAD: AuthoredCase[] = [
         truth: "loadbearing",
         detail: "Week 4 — single purchase. School supply list on file.",
       },
+      {
+        // The easy call that isn't filler: an essential repair the allowance
+        // covers outright — approving it is on-standard and audit-quiet (§1).
+        label: "Washing machine repair",
+        amount: 95,
+        nature: "essential",
+        decisionTurn: 3,
+        truth: "loadbearing",
+        detail: "Week 3 — single purchase. Repair invoice on file.",
+      },
     ],
   },
   {
@@ -126,6 +136,16 @@ export const CASELOAD: AuthoredCase[] = [
         truth: "fraud", // resale — the one flag the sim vindicates (pillar 8)
         detail: "Week 2 — single purchase. No receipt submitted.",
       },
+      {
+        // Mixed with no dependent on file → a warning (§1): the same handset
+        // that a child's schooling would justify reads as discretionary here.
+        label: "Smartphone (replacement)",
+        amount: 110,
+        nature: "mixed",
+        decisionTurn: 5,
+        truth: "loadbearing",
+        detail: "Week 5 — single purchase. Claimant states handset needed for shift postings.",
+      },
     ],
   },
   {
@@ -148,6 +168,16 @@ export const CASELOAD: AuthoredCase[] = [
         decisionTurn: 2,
         truth: "loadbearing",
         detail: "Week 2 — single purchase. Prior unit failure documented.",
+      },
+      {
+        // The clear luxury the rubric wants flagged even with two dependents —
+        // and the trap (§1): the rubric-correct flag still hits a real household.
+        label: "Game console",
+        amount: 150,
+        nature: "luxury",
+        decisionTurn: 5,
+        truth: "loadbearing",
+        detail: "Week 5 — single purchase. Child's birthday noted in prior contact.",
       },
     ],
   },

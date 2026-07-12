@@ -37,7 +37,7 @@ interface StampRecord {
   stamp: Verdict;
 }
 
-// Decisions are fewer and meatier now (3 cases, ~4 items each) — give each one
+// Decisions are fewer and meatier now (3 cases, ~5 items each) — give each one
 // reading time: the circumstances panel is part of the call.
 const SECONDS_PER_ITEM = 10;
 const BASE_SECONDS = 8;
@@ -191,6 +191,9 @@ class Desk {
   }
 
   private stamp(item: ReviewItem, verdict: Verdict, cell: HTMLElement, btns: HTMLButtonElement[]): void {
+    // No desk stamps while the supervisor has the queue (§5) — the paused timer
+    // already can't fire timeout(), but nothing may land behind the interstitial.
+    if (this.auditOpen) return;
     if (this.caseStamps.has(item.itemId)) return; // one determination per item
     this.caseStamps.add(item.itemId);
 
@@ -276,6 +279,13 @@ class Desk {
    */
   private fireAudit(crossing: StampRecord): void {
     this.auditOpen = true;
+    // The case clock pauses while the supervisor has the queue (§5): otherwise
+    // timeout() could auto-approve unseen items behind the interstitial. Note
+    // whether it was running — if the crossing stamp was the case's last, the
+    // timer is already stopped and there is nothing to resume.
+    const wasRunning = this.timerId !== null;
+    const pausedAt = performance.now();
+    this.stopTimer();
     this.stage.querySelector<HTMLButtonElement>("#submit")?.setAttribute("disabled", "");
 
     const target =
@@ -329,6 +339,12 @@ class Desk {
     returnBtn.addEventListener("click", () => {
       overlay.remove();
       this.auditOpen = false;
+      // Resume the case clock with the remaining fraction preserved: shift the
+      // case's start forward by however long the interstitial was up.
+      if (wasRunning && this.remaining() > 0) {
+        this.caseStart += performance.now() - pausedAt;
+        this.runTimer();
+      }
       this.maybeEnableSubmit();
     });
 
@@ -338,6 +354,12 @@ class Desk {
   // ---- timer ----
   private startTimer(): void {
     this.caseStart = performance.now();
+    this.runTimer();
+  }
+
+  /** (Re)start the tick loop against the current caseStart — startTimer for a
+   *  fresh case, or the audit's resume after it shifts caseStart forward. */
+  private runTimer(): void {
     const bar = this.stage.querySelector<HTMLElement>("#timer")!;
     const tick = (): void => {
       const frac = Math.max(0, 1 - (performance.now() - this.caseStart) / this.caseDuration);

@@ -11,7 +11,8 @@ import {
   deriveAllowance,
   verdictFor,
 } from "../src/act1/rubric.ts";
-import type { Circumstances } from "../src/act1/cases.ts";
+import { buildCase, CASELOAD, type Circumstances } from "../src/act1/cases.ts";
+import { dockFor, resolveItem } from "../src/act1/counterfactual.ts";
 import {
   AUDIT_THRESHOLD,
   alignment,
@@ -187,5 +188,34 @@ describe("kpi — flag rate + rating (§4, load-bearing contract)", () => {
 
     expect(audited.auditRisk).toBeGreaterThanOrEqual(AUDIT_THRESHOLD);
     expect(rating(audited).stars).toBeLessThan(rating(clean).stars);
+  });
+});
+
+describe("counterfactual — the warn's partial dock (§6)", () => {
+  // A real built case, a real load-bearing big-ticket: Alvarez's laptop.
+  const built = buildCase(CASELOAD.find((c) => c.id === "c1")!);
+  const item = built.items.find((i) => i.itemId === "c1-refurbished-laptop")!;
+
+  it("dockFor: flag docks the full amount, warn half, approve nothing", () => {
+    expect(dockFor(item, "flag")).toBe(item.dockAmount);
+    expect(dockFor(item, "warn")).toBe(Math.round(item.dockAmount / 2));
+    expect(dockFor(item, "approve")).toBe(0);
+  });
+
+  it("a warn resolves with the half dock, and the fork runs on it", () => {
+    const warned = resolveItem(built, item, "warn");
+    expect(warned.docked).toBe(dockFor(item, "warn"));
+    expect(warned.docked).toBe(Math.round(item.dockAmount / 2));
+    // The partial dock still hurt a real period — a trap, not a neutral.
+    expect(warned.flagCorrect).toBe(false);
+    expect(warned.headline).toBe(`${item.label}: warned — $${warned.docked} docked.`);
+    // The alternative to a warn is the clean approval, and says so.
+    expect(warned.altPole).toBe("approve");
+    expect(warned.alternative).toBe("Absorbed. No downstream events.");
+    // The played branch was forked on the PARTIAL dock, not the full one:
+    // for this item the half dock diverges at a different point than the
+    // full dock, so the two reads differ (deterministic under DEFAULT_CONFIG).
+    const flagged = resolveItem(built, item, "flag");
+    expect(warned.asPlayed).not.toBe(flagged.asPlayed);
   });
 });

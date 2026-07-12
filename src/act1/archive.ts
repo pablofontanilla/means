@@ -87,7 +87,9 @@ export class Archive {
     const cls = cf.flagCorrect === true ? "correct" : cf.flagCorrect === false ? "trap" : "neutral";
     const verb = { approve: "APPROVED", warn: "WARNED", flag: "FLAGGED" }[cf.stamp];
     const dock = cf.docked > 0 ? ` Benefit docked $${cf.docked}.` : " No dock applied.";
-    const altTag = cf.stamp === "approve" ? "Branch if flagged" : "Branch if approved";
+    // The tag names the pole the alternative text actually describes — a warn
+    // on the fraud item branches toward the flag, not back to an approval.
+    const altTag = cf.altPole === "flag" ? "Branch if flagged" : "Branch if approved";
     return `
       <div class="cf ${cls}">
         <div class="head">${cf.caseName} — ${cf.label}, $${cf.spend} under review. ${verb}.</div>
