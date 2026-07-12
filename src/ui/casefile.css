@@ -137,6 +137,9 @@ body {
 .decision-feedback .bad { color: var(--flag); }
 .decision-feedback .risk { color: var(--flag); font-weight: 700; }
 
+/* audit re-review annotation on the original row (§5) */
+.amend-note { font-family: var(--mono); font-size: 11px; margin-top: 4px; color: var(--flag); font-weight: 700; animation: fadeIn .3s ease both; }
+
 /* ---- Audit event interstitial (§5): the supervisor screen ---------------- */
 .audit-event {
   position: fixed; inset: 0; z-index: 40; background: rgba(16, 22, 30, .72);
@@ -230,6 +233,11 @@ body {
 .cf .branch.played { background: #fdf3f2; }
 .cf .branch.alt { background: #f1f6f2; }
 .cf .branch .tag { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); display: block; }
+.cf .head .tag.amend {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--flag);
+  border: 1px solid currentColor; border-radius: 3px; padding: 1px 5px; margin-right: 4px;
+  display: inline-block; vertical-align: 1px;
+}
 .clerk-note { background: #fff8e6; border: 1px solid #f0e0b0; border-radius: 6px; padding: 10px 12px; font-size: 13px; margin: 12px 0; font-style: italic; }
 
 /* ---- Review / end screens -------------------------------------------- */

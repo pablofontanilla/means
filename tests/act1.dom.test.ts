@@ -128,6 +128,40 @@ describe("Act 1 desk flow (jsdom)", () => {
     expect(o.counterfactuals.length).toBe(o.kpi.totalStamps);
   });
 
+  it("re-stamps the original case-file row and marks the archive entry amended after an audit re-determination", () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    runAct1(root, DEFAULT_CONFIG, () => {});
+
+    // Case 1 (R. Alvarez): audit-quiet. Case 2 (D. Okafor): approving the
+    // expected-flags crosses the threshold; the pulled determination (Okafor's
+    // Dining bucket) is on the CURRENT case, so its row is still on screen.
+    stampCase(root, "approve");
+    expect(submitCase(root)).toBe(true);
+    stampCase(root, "approve");
+    const overlay = document.querySelector<HTMLElement>(".audit-event")!;
+    expect(overlay).toBeTruthy();
+
+    const diningRow = Array.from(root.querySelectorAll<HTMLElement>(".casefile tr.flaggable")).find(
+      (tr) => tr.querySelector("td.label")!.textContent!.includes("Dining"),
+    )!;
+    expect(diningRow.querySelector(".stamp-mark.approve")).toBeTruthy();
+
+    // Fresh determination: FLAG. The original row must be re-slammed with the
+    // new mark and carry an "amended under audit" annotation.
+    overlay.querySelector<HTMLButtonElement>(".stampbtn.flag")!.click();
+    expect(diningRow.querySelector(".stamp-mark.flag")).toBeTruthy();
+    expect(diningRow.querySelector(".stamp-mark.approve")).toBeNull();
+    expect(diningRow.textContent).toMatch(/amended under audit/i);
+
+    // The archive files the re-review as an amendment, not a duplicate:
+    // exactly one entry is tagged, and it's the newest (rendered first).
+    const amended = root.querySelectorAll(".drawer .cf.amended");
+    expect(amended.length).toBe(1);
+    expect(amended[0].textContent).toMatch(/amended under audit/i);
+    expect(root.querySelector(".drawer .cf")).toBe(amended[0]);
+  });
+
   it("defers a mid-timeout audit crossing until the whole batch is auto-stamped", () => {
     // Capture the desk's rAF tick so the case clock can be driven for real:
     // jump performance.now past the deadline and run one tick — timeout() fires

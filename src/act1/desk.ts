@@ -352,7 +352,8 @@ class Desk {
         this.stamped.push({ builtCase: target.builtCase, item: target.item, stamp: verdict });
         const cf = resolveItem(target.builtCase, target.item, verdict, this.config);
         this.counterfactuals.push(cf);
-        this.archive.add(cf);
+        this.archive.add(cf, { amended: true });
+        this.restampOriginalRow(target, verdict);
         this.updateKpiStrip(breakdown.points > 0);
         returnBtn.disabled = false;
       });
@@ -376,6 +377,24 @@ class Desk {
     // dims first, a beat, then the memo drops in with a heavy, muffled stamp —
     // timed to the memo's delayed entrance (see .audit-event .memo in CSS).
     setTimeout(() => playStamp({ muffled: true, gain: 1.6 }), 260);
+  }
+
+  /** If the re-reviewed determination is on the case still on screen, the desk
+   *  must agree with the supervisor's memo: replace the old mark on the original
+   *  row (silently — the interstitial's slam already landed) and annotate it.
+   *  Prior-case rows are gone from the stage; the archive tag carries those. */
+  private restampOriginalRow(target: StampRecord, verdict: Verdict): void {
+    if (target.builtCase !== this.current) return;
+    const cell = this.findCell(target.item.itemId);
+    if (!cell) return;
+    slamStamp(cell, verdict, { silent: true });
+    const label = cell.closest("tr")?.querySelector<HTMLElement>("td.label");
+    if (!label) return;
+    label.querySelector(".amend-note")?.remove();
+    const note = document.createElement("div");
+    note.className = "amend-note";
+    note.textContent = `Amended under audit — previously ${VERDICT_PAST[target.stamp]}`;
+    label.appendChild(note);
   }
 
   // ---- timer ----

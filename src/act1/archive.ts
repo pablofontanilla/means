@@ -6,8 +6,14 @@
 
 import type { Counterfactual } from "./counterfactual.ts";
 
+/** One filed entry: the resolution plus whether it amends a prior one (§5 audit re-review). */
+interface ArchiveEntry {
+  cf: Counterfactual;
+  amended: boolean;
+}
+
 export class Archive {
-  private entries: Counterfactual[] = [];
+  private entries: ArchiveEntry[] = [];
   private drawer: HTMLElement;
   private scroll: HTMLElement;
   private badge: HTMLElement;
@@ -34,8 +40,8 @@ export class Archive {
     this.render();
   }
 
-  add(cf: Counterfactual): void {
-    this.entries.push(cf);
+  add(cf: Counterfactual, opts: { amended?: boolean } = {}): void {
+    this.entries.push({ cf, amended: opts.amended ?? false });
     this.badge.textContent = String(this.entries.length);
     this.render();
   }
@@ -77,11 +83,11 @@ export class Archive {
     this.scroll.innerHTML = this.entries
       .slice()
       .reverse()
-      .map((cf) => this.renderEntry(cf))
+      .map((e) => this.renderEntry(e))
       .join("");
   }
 
-  private renderEntry(cf: Counterfactual): string {
+  private renderEntry({ cf, amended }: ArchiveEntry): string {
     // correct = the vindicated fraud flag; trap = a dock that hurt a real
     // period; neutral = an approval that changed nothing (no dock applied).
     const cls = cf.flagCorrect === true ? "correct" : cf.flagCorrect === false ? "trap" : "neutral";
@@ -90,9 +96,10 @@ export class Archive {
     // The tag names the pole the alternative text actually describes — a warn
     // on the fraud item branches toward the flag, not back to an approval.
     const altTag = cf.altPole === "flag" ? "Branch if flagged" : "Branch if approved";
+    const amendTag = amended ? `<span class="tag amend">Amended under audit</span> ` : "";
     return `
-      <div class="cf ${cls}">
-        <div class="head">${cf.caseName} — ${cf.label}, $${cf.spend} under review. ${verb}.</div>
+      <div class="cf ${cls}${amended ? " amended" : ""}">
+        <div class="head">${amendTag}${cf.caseName} — ${cf.label}, $${cf.spend} under review. ${verb}.</div>
         <div class="sub">${dock.trim()}</div>
         <div class="branch played"><span class="tag">Branch as played</span>${cf.asPlayed}</div>
         <div class="branch alt"><span class="tag">${altTag}</span>${cf.alternative}</div>
