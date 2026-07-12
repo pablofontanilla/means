@@ -252,24 +252,40 @@ body {
 .fade-in { animation: fadeIn .5s ease both; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-/* ---- Act 2: the case (same interface + one new column, §7.4) ---------- */
-/* The capacity meter — the variable the desk never displayed. This diff IS the
-   thesis as UI: the judgment was made on the ledger; the truth lived in the
-   column the form didn't have. */
-.meters { display: flex; gap: 20px; align-items: center; }
-.meter { min-width: 150px; }
-.meter .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; opacity: .85; }
-.meter .track { height: 10px; background: rgba(255,255,255,.22); border-radius: 5px; overflow: hidden; margin-top: 3px; }
-.meter .fill { height: 100%; border-radius: 5px; transition: width .4s ease, background .4s ease; }
-.meter.capacity .fill { background: #7fe3c0; }
-.meter.capacity .fill.low { background: #ffc24b; }
-.meter.capacity .fill.crit { background: #ff6b74; }
-.meter .val { font-family: var(--mono); font-size: 12px; margin-top: 2px; }
+/* ---- Act 2: the case (same interface + one new element, §7.4) ---------- */
+/* The capacity meter — the variable the desk never displayed — now centered
+   above the case file, the visual focal point. This diff IS the thesis as UI:
+   the judgment was made on the ledger; the truth lived in the column the form
+   didn't have. Money/tier demote to a small readout line beneath it. */
+.capacity-focal {
+  background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: var(--shadow); padding: 18px 26px 14px; margin-bottom: 16px;
+  text-align: center;
+}
+.meter .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); }
+.meter .track {
+  height: 22px; background: var(--field); border: 1px solid var(--line);
+  border-radius: 11px; overflow: hidden; margin-top: 8px;
+}
+.meter .fill { height: 100%; border-radius: 11px; transition: width .6s ease, background .6s ease; }
+.meter.capacity .fill { background: #2aa876; }
+.meter.capacity .fill.low { background: #e0a12f; }
+.meter.capacity .fill.crit { background: var(--flag); }
+.meter .val { font-family: var(--mono); font-size: 16px; font-weight: 700; margin-top: 6px; }
 
-.you-strip { display:flex; gap: 18px; align-items:center; }
-.you-strip .cash { text-align:right; }
-.you-strip .cash .amt { font-family: var(--mono); font-size: 18px; font-weight: 700; display: block; }
-.you-strip .cash .lbl { font-size: 10px; text-transform: uppercase; letter-spacing:.08em; opacity:.85; display: block; margin-top: 2px; }
+/* dread states: the frame itself registers the decline (§7.4) */
+.capacity-focal.low { border-color: #e0c37c; }
+.capacity-focal.low .val { color: var(--warn); }
+.capacity-focal.crit { border-color: var(--flag); animation: dreadPulse 1.5s ease-in-out infinite; }
+.capacity-focal.crit .val, .capacity-focal.crit .meter .lbl { color: var(--flag); }
+@keyframes dreadPulse {
+  0%, 100% { box-shadow: var(--shadow); }
+  50% { box-shadow: 0 0 0 5px rgba(200, 54, 47, .16), var(--shadow); }
+}
+.capacity-focal .readouts { margin-top: 10px; font-size: 12px; color: var(--muted); font-family: var(--mono); }
+
+/* a missed required appointment reads in stamp red inside the week note */
+.note .missed-appt { color: var(--flag); font-weight: 700; font-style: normal; }
 
 /* discretionary purchase lines carry the same flag-risk look the player wielded */
 .ledger tr.risk td.label::after {
@@ -279,11 +295,13 @@ body {
 .ledger tr.docked { background: #fdeceb; }
 .ledger tr.docked td.label { color: var(--flag); }
 
-/* allocation controls */
+/* allocation controls — five steppers + tier now; same .ctl/.stepper language */
 .allocate { padding: 16px 18px; border-top: 1px solid var(--line); background: var(--field); }
 .allocate h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; }
+.allocate h3 #slots-used { font-family: var(--mono); color: var(--accent-dark); }
+.allocate h3 #slots-used.full { color: var(--warn); }
 .ctl { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.ctl .name { width: 150px; font-size: 13px; }
+.ctl .name { width: 220px; font-size: 13px; }
 .ctl .name small { color: var(--muted); display: block; font-size: 11px; }
 .stepper { display: inline-flex; align-items: center; border: 1.5px solid var(--line); border-radius: 6px; overflow: hidden; }
 .stepper button { border: 0; background: #fff; width: 30px; height: 30px; font-size: 16px; cursor: pointer; color: var(--accent); }

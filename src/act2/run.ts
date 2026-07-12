@@ -2,8 +2,9 @@
 // rendered in the interface they used to wield at the desk. Their purchases
 // appear as ledger lines with the same flag-risk indicator they spent Act 1
 // applying to strangers; the clerk reviews their file with their own policy; and
-// the previously hidden capacity meter is finally visible (§7.4). Nothing else
-// visually distinguishes the acts — continuity is the statement (§8).
+// the previously hidden capacity meter is finally visible (§7.4) — centered
+// above the case file, unmissable, the one sanctioned break in continuity.
+// Nothing else visually distinguishes the acts — continuity is the statement (§8).
 
 import { type Config, maxTier } from "../engine/config.ts";
 import { initState, step } from "../engine/engine.ts";
@@ -55,6 +56,7 @@ class Act2Run {
     const s = this.state;
     const capPct = (s.capacity / this.config.capacityMax) * 100;
     const tierName = this.config.tiers[s.tier].name;
+    const dread = this.capacityClass();
 
     this.root.innerHTML = `
       <header class="portal-header">
@@ -63,19 +65,16 @@ class Act2Run {
           <h1>Claimant Portal</h1>
           <div class="sub">Benefits Integrity Division · your file</div>
         </div>
-        <div class="spacer"></div>
-        <div class="meters">
-          <div class="meter capacity">
-            <div class="lbl">Capacity</div>
-            <div class="track"><div class="fill ${this.capacityClass()}" style="width:${capPct}%"></div></div>
-            <div class="val">${Math.round(s.capacity)} / ${this.config.capacityMax}</div>
-          </div>
-          <div class="you-strip">
-            <div class="cash"><span class="amt">$${Math.round(s.money)}</span><span class="lbl">On hand · ${tierName}</span></div>
-          </div>
-        </div>
       </header>
       <div class="stage">
+        <div class="capacity-focal ${dread} fade-in">
+          <div class="meter capacity">
+            <div class="lbl">Capacity — what the form never showed</div>
+            <div class="track"><div class="fill ${dread}" style="width:${capPct}%"></div></div>
+            <div class="val">${Math.round(s.capacity)} / ${this.config.capacityMax}</div>
+          </div>
+          <div class="readouts">$${Math.round(s.money)} on hand · ${tierName}${s.debt > 0 ? ` · $${Math.round(s.debt)} owed` : ""}</div>
+        </div>
         <div class="casefile fade-in">
           <div class="idstrip">
             <div>
@@ -115,36 +114,57 @@ class Act2Run {
     }
   }
 
+  /** Slots committed to the four slot-consuming actions (comforts cost money, not time). */
+  private slotsUsed(): number {
+    const a = this.alloc;
+    return a.regularShifts + a.overtimeShifts + a.restSlots + a.errandSlots;
+  }
+
+  /** Cheap earnings estimate at current capacity — the same linear yieldFactor
+   * math as the engine (§5.1), inlined as a projection only; the engine's
+   * resolution stays the single source of truth. */
+  private estimateEarn(shifts: number, perShift: number): number {
+    const c = this.config;
+    const yf = c.yieldFloor + (1 - c.yieldFloor) * (this.state.capacity / c.capacityMax);
+    return Math.round(shifts * perShift * yf);
+  }
+
   private renderAllocatePanel(): string {
     const c = this.config;
     const a = this.alloc;
     const nextTier = this.state.tier < maxTier(c) ? c.tiers[this.state.tier + 1] : null;
     const moveAffordable = nextTier ? this.state.money >= nextTier.moveCost : false;
     const restCost = a.restorationUnits * c.restorationCost;
+    const used = this.slotsUsed();
+    const full = used >= c.timeSlotsPerTurn;
+    // A stepper row over one Allocation field. `slot` steppers share the weekly
+    // time budget; their "+" greys out when the week is full.
+    const stepper = (
+      key: string,
+      value: number,
+      name: string,
+      hint: string,
+      effect: string,
+      opts: { slot?: boolean; max?: number } = {},
+    ): string => {
+      const plusDisabled = (opts.slot && full) || (opts.max !== undefined && value >= opts.max);
+      return `
+        <div class="ctl">
+          <div class="name">${name}<small>${hint}</small></div>
+          <div class="stepper" data-step="${key}">
+            <button data-d="-1" ${value <= 0 ? "disabled" : ""}>–</button><span class="v" id="v-${key}">${value}</span><button data-d="1" ${plusDisabled ? "disabled" : ""}>+</button>
+          </div>
+          <div class="effect" id="e-${key}">${effect}</div>
+        </div>`;
+    };
     return `
       <div class="allocate">
-        <h3>Allocate this week — ${c.timeSlotsPerTurn} time slots · money on hand $${Math.round(this.state.money)}</h3>
-        <div class="ctl">
-          <div class="name">Work shifts<small>earns money, drains capacity</small></div>
-          <div class="stepper" data-step="work">
-            <button data-d="-1">–</button><span class="v" id="v-work">${a.regularShifts}</span><button data-d="1">+</button>
-          </div>
-          <div class="effect" id="e-work"></div>
-        </div>
-        <div class="ctl">
-          <div class="name">Rest<small>restores capacity, no pay</small></div>
-          <div class="stepper" data-step="rest">
-            <button data-d="-1">–</button><span class="v" id="v-rest">${a.restSlots}</span><button data-d="1">+</button>
-          </div>
-          <div class="effect">${a.restSlots} of ${c.timeSlotsPerTurn - a.regularShifts} free slot(s)</div>
-        </div>
-        <div class="ctl">
-          <div class="name">Small comforts<small>restores capacity · flag-risk</small></div>
-          <div class="stepper" data-step="rest-units">
-            <button data-d="-1">–</button><span class="v" id="v-units">${a.restorationUnits}</span><button data-d="1">+</button>
-          </div>
-          <div class="effect" id="e-units">${restCost > 0 ? `−$${restCost}` : "—"}</div>
-        </div>
+        <h3>Allocate this week — <span id="slots-used" class="${full ? "full" : ""}">${used} / ${c.timeSlotsPerTurn} slots</span> · $${Math.round(this.state.money)} on hand</h3>
+        ${stepper("work", a.regularShifts, "Regular shifts", "earns money, drains capacity", `≈ +$${this.estimateEarn(a.regularShifts, c.shiftYield)} · −${(a.regularShifts * c.shiftFatigue).toFixed(1)} cap`, { slot: true })}
+        ${stepper("overtime", a.overtimeShifts, "Overtime shifts", "pays more, drains much more", `≈ +$${this.estimateEarn(a.overtimeShifts, c.overtimeYield)} · −${(a.overtimeShifts * c.overtimeFatigue).toFixed(1)} cap`, { slot: true })}
+        ${stepper("rest", a.restSlots, "Rest", "restores capacity, no pay", `+${a.restSlots * c.restPerSlot} cap`, { slot: true })}
+        ${stepper("errand", a.errandSlots, "Errands / appointments", "no pay · some weeks carry a required appointment — missing it costs you", a.errandSlots > 0 ? "covers a required appointment" : `uncovered: −${c.errandPenalty} cap if one lands`, { slot: true })}
+        ${stepper("rest-units", a.restorationUnits, "Small comforts", "restores capacity · flag-risk", restCost > 0 ? `−$${restCost} · +${a.restorationUnits * c.restorationCapacity} cap` : "—", { max: c.maxRestorationUnits })}
         <div class="ctl tier">
           <div class="name">Move up a tier<small>${nextTier ? `${nextTier.name} · −$${nextTier.moveCost} · less drain` : "at the top tier"}</small></div>
           <button class="btn ghost" id="tier-btn" ${!nextTier || !moveAffordable ? "disabled" : ""}>${a.attemptTierMove ? "Will attempt ✓" : "Attempt move"}</button>
@@ -158,27 +178,35 @@ class Act2Run {
 
   private wireControls(): void {
     const c = this.config;
-    const clampAlloc = (): void => {
-      // Time slots are shared between work and rest.
-      this.alloc.regularShifts = Math.max(0, Math.min(c.timeSlotsPerTurn, this.alloc.regularShifts));
-      this.alloc.restSlots = Math.max(0, Math.min(c.timeSlotsPerTurn - this.alloc.regularShifts, this.alloc.restSlots));
-      this.alloc.restorationUnits = Math.max(0, Math.min(c.maxRestorationUnits, this.alloc.restorationUnits));
-    };
+    // The shared slot budget (§10.1): regular + overtime + rest + errands ≤
+    // timeSlotsPerTurn. The clamp caps the changed field at the remaining
+    // budget, so the total can never exceed it (the disabled "+" is UX; this
+    // is the guarantee — it closes the Task 1 gap where errands sat outside
+    // the clamp).
+    const slotKeys = {
+      work: "regularShifts",
+      overtime: "overtimeShifts",
+      rest: "restSlots",
+      errand: "errandSlots",
+    } as const;
     this.root.querySelectorAll<HTMLElement>(".stepper").forEach((stepper) => {
       const which = stepper.dataset.step!;
       stepper.querySelectorAll<HTMLButtonElement>("button").forEach((btn) => {
         btn.addEventListener("click", () => {
           const d = parseInt(btn.dataset.d!, 10);
-          if (which === "work") {
-            this.alloc.regularShifts += d;
-            if (d > 0) this.alloc.restSlots = Math.max(0, this.alloc.restSlots - 1);
-          } else if (which === "rest") {
-            this.alloc.restSlots += d;
-            if (d > 0) this.alloc.regularShifts = Math.max(0, this.alloc.regularShifts - 1);
+          if (which === "rest-units") {
+            this.alloc.restorationUnits = Math.max(
+              0,
+              Math.min(c.maxRestorationUnits, this.alloc.restorationUnits + d),
+            );
           } else {
-            this.alloc.restorationUnits += d;
+            const key = slotKeys[which as keyof typeof slotKeys];
+            const others = this.slotsUsed() - this.alloc[key];
+            this.alloc[key] = Math.max(
+              0,
+              Math.min(c.timeSlotsPerTurn - others, this.alloc[key] + d),
+            );
           }
-          clampAlloc();
           this.refreshPanel();
         });
       });
@@ -235,6 +263,17 @@ class Act2Run {
     const rec = this.state.history[this.state.history.length - 1];
     if (!rec) return "";
     const parts = [`Week ${rec.turn}: earned $${Math.round(rec.spend.earned)}.`];
+    // The appointment can't be known before the week resolves (the roll happens
+    // inside step); what CAN be shown is the consequence (§10.1).
+    if (rec.spend.appointmentRequired) {
+      if (rec.spend.appointmentMet) {
+        parts.push("A required appointment landed this week — your errand slot covered it.");
+      } else {
+        parts.push(
+          `<strong class="missed-appt">A required appointment landed this week and nobody went — capacity docked ${rec.spend.errandPenalty}.</strong>`,
+        );
+      }
+    }
     if (rec.event) {
       const e = rec.event;
       if (e.moneyHit < 0) parts.push(`${e.card.label}: +$${Math.abs(Math.round(e.moneyHit))}.`);
@@ -263,8 +302,7 @@ class Act2Run {
       escaped:
         "You crossed the structural line before capacity hit zero. Not because you got smarter — because you finally had enough slack that a shock stopped being lethal.",
       collapsed: "Capacity reached zero. The comforts you skipped were the engine; without them it stalled.",
-      trapped:
-        "Thirty weeks. You kept the machine running, spent every comfort exactly right — and you are in the same hole. This is the trap: not death, but not moving.",
+      trapped: `${this.config.turnCeiling} weeks. You kept the machine running, spent every comfort exactly right — and you are in the same hole. This is the trap: not death, but not moving.`,
     };
 
     const stage = this.root.querySelector<HTMLElement>(".stage") ?? this.root;

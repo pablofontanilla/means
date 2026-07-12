@@ -110,8 +110,12 @@ export const DEFAULT_CONFIG: Config = {
 
   escapeReserve: 55, // buffer to hold at the top tier to cross the structural line
 
-  clerkInterval: 4,
-  clerkDockPerFlag: 12,
+  // Re-tuned for the ~40-week horizon: reviews every 6 weeks (~6 per run) land
+  // regularly without being constant; $6/flag keeps the worst-case dock in the
+  // tens — a sting against tight weekly margins, never the difficulty driver
+  // (§11.3, flavor only).
+  clerkInterval: 6,
+  clerkDockPerFlag: 6,
 };
 
 export function cloneConfig(c: Config): Config {

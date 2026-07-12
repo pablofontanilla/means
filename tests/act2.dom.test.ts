@@ -20,12 +20,13 @@ describe("Act 2 run loop (jsdom smoke test)", () => {
     document.body.appendChild(root);
     runAct2(root, DEFAULT_CONFIG, { name: "You", flagRate: 0.6 });
 
-    // The one new UI element (§7.4) is present from week 0.
-    expect(root.querySelector(".meter.capacity")).toBeTruthy();
+    // The one new UI element (§7.4) is present from week 0 — now centered in
+    // the stage as the focal point, not tucked in the header.
+    expect(root.querySelector(".stage .capacity-focal .meter.capacity")).toBeTruthy();
 
     let sawClerk = false;
     let ended = false;
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < DEFAULT_CONFIG.turnCeiling + 10; i++) {
       if (root.querySelector(".clerk-review")) sawClerk = true;
       const btn = root.querySelector<HTMLButtonElement>("#end-week");
       if (!btn) {
@@ -42,6 +43,41 @@ describe("Act 2 run loop (jsdom smoke test)", () => {
     // The ending is one of the three outcomes (§5.5).
     const cls = root.querySelector(".ending")!.className;
     expect(/escaped|collapsed|trapped/.test(cls)).toBe(true);
+  });
+
+  it("offers the full action set and enforces the shared slot budget", () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    runAct2(root, DEFAULT_CONFIG, { name: "You", flagRate: 0.6 });
+
+    // All five steppers exist: the four slot-consuming actions + comforts.
+    for (const which of ["work", "overtime", "rest", "errand", "rest-units"]) {
+      expect(root.querySelector(`.stepper[data-step="${which}"]`)).toBeTruthy();
+    }
+
+    // Mash every slot action's "+" far past the budget; the clamp must hold
+    // the total at timeSlotsPerTurn (the Task 1 stopgap left errands outside
+    // the budget — this is the regression guard).
+    const plus = (which: string): void => {
+      root
+        .querySelector<HTMLButtonElement>(`.stepper[data-step="${which}"] button[data-d="1"]`)!
+        .click();
+    };
+    for (let i = 0; i < 10; i++) {
+      plus("work");
+      plus("overtime");
+      plus("rest");
+      plus("errand");
+    }
+    const val = (id: string): number =>
+      parseInt(root.querySelector(`#${id}`)!.textContent!, 10);
+    const used = val("v-work") + val("v-overtime") + val("v-rest") + val("v-errand");
+    expect(used).toBe(DEFAULT_CONFIG.timeSlotsPerTurn);
+
+    // The panel header reports slots used / total.
+    const slots = root.querySelector("#slots-used")!.textContent!;
+    expect(slots).toContain(String(used));
+    expect(slots).toContain(String(DEFAULT_CONFIG.timeSlotsPerTurn));
   });
 });
 
